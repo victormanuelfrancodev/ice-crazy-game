@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ice Crazy</title>
+<meta name="description" content="Tiro de Cubitos: lanza figuritas de hielo con física 3D, contra la computadora o en red con tus amigos.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="src/estilos.css">
+</head>
+<body>
+
+<canvas id="escena" aria-label="Mesa de juego en 3D"></canvas>
+
+<!-- ============ PRESENTACIÓN ============ -->
+<section id="presentacion" class="pantalla">
+  <div class="logo">
+    <h1>Ice Crazy</h1>
+    <p class="lema">Tiro de Cubitos</p>
+  </div>
+  <div class="acciones">
+    <button class="principal grande" id="btnJugar" type="button">Jugar</button>
+    <button id="btnCreditos" type="button">Créditos</button>
+  </div>
+  <p class="pie">15 cubitos de hielo · 3 juegos de lanzar · solo o en red</p>
+</section>
+
+<!-- ============ ELEGIR PERSONAJE + MODO ============ -->
+<section id="elegir" class="pantalla" hidden>
+  <button class="volver" id="elegirVolver" type="button">‹ Inicio</button>
+  <div class="panel vidrio">
+    <div class="elige">
+      <button class="flecha" id="prev" type="button" aria-label="Personaje anterior">‹</button>
+      <h2><small>Tu cubito · <span id="pjNum">1</span> de 15</small><span id="pjNombre">Frapé</span><em id="pjDesc"></em></h2>
+      <button class="flecha" id="next" type="button" aria-label="Personaje siguiente">›</button>
+    </div>
+    <label class="campo">Tu nombre
+      <input id="nombre" maxlength="14" autocomplete="nickname" placeholder="Cómo te verán los demás">
+    </label>
+    <div class="pestanas" role="tablist">
+      <button type="button" role="tab" id="tabCpu" class="activa" aria-selected="true">Contra la CPU</button>
+      <button type="button" role="tab" id="tabRed" aria-selected="false">En red</button>
+    </div>
+    <div id="panelCpu">
+      <div class="fila-etq">
+        <span>Rivales</span>
+        <div class="segmento" id="numCpu">
+          <button type="button" data-n="1" class="activo">1</button>
+          <button type="button" data-n="2">2</button>
+          <button type="button" data-n="3">3</button>
+        </div>
+      </div>
+      <div class="modos" id="modosCpu"></div>
+    </div>
+    <div id="panelRed" hidden>
+      <button class="principal ancho" id="btnCrear" type="button">Crear sala</button>
+      <div class="unirse">
+        <input id="codigo" maxlength="5" placeholder="Código" autocapitalize="characters" autocomplete="off" aria-label="Código de la sala">
+        <button id="btnUnirse" type="button">Unirse</button>
+      </div>
+      <p class="nota">El que crea la sala comparte el código o el enlace. Entran hasta 12 jugadores.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SALA (lobby) ============ -->
+<section id="sala" class="pantalla" hidden>
+  <div class="panel vidrio sala">
+    <div class="sala-cab">
+      <div>
+        <small>Código de la sala</small>
+        <div class="codigo" id="salaCodigo">-----</div>
+      </div>
+      <button id="btnCopiar" type="button">Copiar enlace</button>
+    </div>
+    <p class="enlace" id="salaEnlace"></p>
+    <div class="fila-etq"><span>Jugadores <b id="salaCuenta">1/12</b></span></div>
+    <ul class="jugadores" id="salaLista"></ul>
+    <div id="salaHost">
+      <div class="fila-etq"><span>Juego</span></div>
+      <div class="modos" id="modosSala"></div>
+      <div class="fila-botones">
+        <button id="btnAddCpu" type="button">+ CPU</button>
+        <button class="principal" id="btnEmpezar" type="button">Empezar</button>
+      </div>
+    </div>
+    <p class="nota" id="salaEspera" hidden>Esperando a que el anfitrión empiece…</p>
+    <button class="volver-chico" id="btnSalirSala" type="button">Salir de la sala</button>
+  </div>
+</section>
+
+<!-- ============ JUEGO ============ -->
+<div id="hud" hidden>
+  <div class="centro"><h3 id="hudModo">Clásico</h3><p id="hudRonda"></p></div>
+  <ul class="chips" id="chips"></ul>
+</div>
+<button id="salir" type="button" hidden>‹ Salir</button>
+<div id="tipoTiro" class="vidrio" hidden role="group" aria-label="Tipo de tiro">
+  <button type="button" data-elev="alto">Bombeado <kbd>1</kbd></button>
+  <button type="button" data-elev="medio">Medio <kbd>2</kbd></button>
+  <button type="button" data-elev="rastrero">Rastrero <kbd>3</kbd></button>
+</div>
+<div id="ayuda" hidden></div>
+<div id="toast" class="oculto"></div>
+
+<!-- ============ FIN ============ -->
+<section id="fin" class="pantalla centrada" hidden>
+  <div class="tarjeta vidrio">
+    <h2 id="finTitulo">¡Ganaste!</h2>
+    <ol class="ranking" id="finRanking"></ol>
+    <p id="finDetalle"></p>
+    <div class="fila-botones">
+      <button class="principal" id="otraVez" type="button">Revancha</button>
+      <button id="aMenu" type="button">Menú</button>
+    </div>
+    <p class="nota" id="finEspera" hidden>El anfitrión decide la revancha.</p>
+  </div>
+</section>
+
+<!-- ============ CRÉDITOS ============ -->
+<section id="creditos" class="pantalla centrada" hidden>
+  <div class="tarjeta vidrio creditos" role="dialog" aria-labelledby="credTitulo">
+    <h2 id="credTitulo">Créditos</h2>
+    <dl>
+      <dt>Idea y dirección</dt><dd>Victor Manuel Franco</dd>
+      <dt>Programación y modelos 3D</dt><dd>Victor Manuel Franco con Claude (Anthropic)</dd>
+      <dt>Personajes</dt><dd>15 cubitos originales: Frapé, Mora, Limo, Tuna, Coco, Mango, Kiwi, Chispa, Menta, Uva, Cereza, Nube, Horchata, Granizo y Tamarindo</dd>
+      <dt>Juegos</dt><dd>Clásico, Bombardero y La línea, basados en los juegos de lanzar figuritas de plástico de los 90 y en las tabas</dd>
+      <dt>Tecnología</dt><dd>Three.js · cannon-es · PeerJS (WebRTC)</dd>
+      <dt>Tipografías</dt><dd>Fredoka · Nunito Sans</dd>
+    </dl>
+    <p class="nota">Hecho en Japón con nostalgia mexicana · 2026</p>
+    <button class="principal" id="credCerrar" type="button">Cerrar</button>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+  "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+} }
+</script>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

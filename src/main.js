@@ -6,6 +6,7 @@ import * as CANNON from "cannon-es";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { PJS, crearCubito, BASE } from "./personajes.js";
 import { Anfitrion, Invitado, limpiarCodigo } from "./red.js";
+import { ESCENARIOS, texturaDe } from "./escenarios.js";
 
 const $ = id => document.getElementById(id);
 const canvas = $("escena");
@@ -34,7 +35,8 @@ scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnviron
 const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 120);
 const camPos = new THREE.Vector3(0, 4, 12.5), camMira = new THREE.Vector3(0, 1.4, 0);
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0xbcd4ff, 1.1));
+const hemi = new THREE.HemisphereLight(0xffffff, 0xbcd4ff, 1.1);
+scene.add(hemi);
 const sol = new THREE.DirectionalLight(0xffffff, 2.2);
 sol.position.set(6, 14, 8);
 sol.castShadow = true;
@@ -56,25 +58,30 @@ const SALIDA = new THREE.Vector3(0, 0, 7.6);
 const CENTRO_CIRCULO = new THREE.Vector3(0, 0, -3), RADIO = 3.4, LINEA_Z = -8;
 
 const marcas = {};
+const matMarcas = { guias: [] };
 {
   const g = new THREE.Group();
   const ring = new THREE.Mesh(new THREE.RingGeometry(RADIO - 0.1, RADIO + 0.08, 64), new THREE.MeshBasicMaterial({ color: 0x2f9bff, transparent: true, opacity: 0.75 }));
+  matMarcas.circulo = ring.material;
   ring.rotation.x = -Math.PI / 2; ring.position.set(CENTRO_CIRCULO.x, 0.012, CENTRO_CIRCULO.z);
   g.add(ring);
   marcas.bombardero = g;
   const l = new THREE.Group();
   const raya = new THREE.Mesh(new THREE.PlaneGeometry(14, 0.16), new THREE.MeshBasicMaterial({ color: 0xff5c7f }));
   raya.rotation.x = -Math.PI / 2; raya.position.set(0, 0.012, LINEA_Z);
+  matMarcas.raya = raya.material;
   l.add(raya);
   for (let i = 1; i <= 3; i++) {
     const r = new THREE.Mesh(new THREE.PlaneGeometry(14, 0.04), new THREE.MeshBasicMaterial({ color: 0x1b2a4a, transparent: true, opacity: 0.12 }));
     r.rotation.x = -Math.PI / 2; r.position.set(0, 0.011, LINEA_Z + i * 1.5);
+    matMarcas.guias.push(r.material);
     l.add(r);
   }
   marcas.linea = l;
   const c = new THREE.Group();
   const tapete = new THREE.Mesh(new THREE.CircleGeometry(4.2, 64), new THREE.MeshStandardMaterial({ color: 0xe6f1ff, roughness: 0.9 }));
   tapete.rotation.x = -Math.PI / 2; tapete.position.set(0, 0.008, 0.5); tapete.receiveShadow = true;
+  matMarcas.tapete = tapete.material;
   c.add(tapete);
   marcas.clasico = c;
   for (const k in marcas) { marcas[k].visible = false; scene.add(marcas[k]); }
@@ -91,11 +98,68 @@ const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -GRAV, 0) });
 world.allowSleep = true;
 world.broadphase = new CANNON.SAPBroadphase(world);
 const matPiso = new CANNON.Material("piso"), matPieza = new CANNON.Material("pieza");
-world.addContactMaterial(new CANNON.ContactMaterial(matPiso, matPieza, { friction: 0.32, restitution: 0.28 }));
+const cmPiso = new CANNON.ContactMaterial(matPiso, matPieza, { friction: 0.32, restitution: 0.28 });
+world.addContactMaterial(cmPiso);
+const matPared = new CANNON.Material("pared");
+const cmPared = new CANNON.ContactMaterial(matPared, matPieza, { friction: 0.1, restitution: 0.5 });
+world.addContactMaterial(cmPared);
 world.addContactMaterial(new CANNON.ContactMaterial(matPieza, matPieza, { friction: 0.25, restitution: 0.4 }));
 const sueloBody = new CANNON.Body({ mass: 0, material: matPiso, shape: new CANNON.Plane() });
 sueloBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
 world.addBody(sueloBody);
+
+// ================= ARENA: tablero y paredes =================
+const ARENA = { x: 7.4, zf: -11.6, za: 10.0, alto: 0.85, g: 0.4 };
+const largoArena = ARENA.za - ARENA.zf, zMedio = (ARENA.za + ARENA.zf) / 2;
+const tablero = new THREE.Mesh(new THREE.PlaneGeometry(ARENA.x * 2, largoArena), new THREE.MeshStandardMaterial({ roughness: 0.38 }));
+tablero.rotation.x = -Math.PI / 2;
+tablero.position.set(0, 0.004, zMedio);
+tablero.receiveShadow = true;
+scene.add(tablero);
+const matParedVis = new THREE.MeshStandardMaterial();
+const paredes = new THREE.Group();
+for (const [cx, cz, sx, sz] of [
+  [0, ARENA.zf - ARENA.g / 2, ARENA.x * 2 + ARENA.g * 2, ARENA.g],
+  [0, ARENA.za + ARENA.g / 2, ARENA.x * 2 + ARENA.g * 2, ARENA.g],
+  [-ARENA.x - ARENA.g / 2, zMedio, ARENA.g, largoArena],
+  [ARENA.x + ARENA.g / 2, zMedio, ARENA.g, largoArena],
+]) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(sx, ARENA.alto, sz), matParedVis);
+  m.position.set(cx, ARENA.alto / 2, cz);
+  m.castShadow = true; m.receiveShadow = true;
+  paredes.add(m);
+  const b = new CANNON.Body({ mass: 0, material: matPared, shape: new CANNON.Box(new CANNON.Vec3(sx / 2, 2.5, sz / 2)) });
+  b.position.set(cx, 2.5, cz);   // la física es más alta que el dibujo para que nada salte por encima
+  world.addBody(b);
+}
+paredes.visible = false;
+scene.add(paredes);
+
+function aplicarEscenario(clave) {
+  const e = ESCENARIOS[clave] ? ESCENARIOS[clave] : ESCENARIOS.hielo;
+  S.escenario = ESCENARIOS[clave] ? clave : "hielo";
+  scene.background.setHex(e.cielo);
+  scene.fog.color.setHex(e.cielo);
+  piso.material.color.setHex(e.afuera);
+  tablero.material.map = texturaDe(S.escenario, "piso");
+  tablero.material.needsUpdate = true;
+  matParedVis.setValues({ color: 0xffffff, map: null, transparent: false, opacity: 1, emissive: 0x000000, emissiveIntensity: 0, roughness: 0.6 });
+  matParedVis.setValues({ ...e.pared, map: texturaDe(S.escenario, "pared") });
+  matParedVis.needsUpdate = true;
+  hemi.color.setHex(e.hemi[0]); hemi.groundColor.setHex(e.hemi[1]); hemi.intensity = e.hemi[2];
+  sol.color.setHex(e.sol[0]); sol.intensity = e.sol[1];
+  cmPiso.friction = e.friccion; cmPiso.restitution = e.rebotePiso;
+  cmPared.restitution = e.rebotePared;
+  matMarcas.circulo.color.setHex(e.circulo);
+  matMarcas.raya.color.setHex(e.raya);
+  for (const g of matMarcas.guias) g.color.setHex(e.guia);
+  matMarcas.tapete.color.setHex(e.tapete);
+  salida.material.color.setHex(e.guia);
+  document.body.dataset.escenario = S.escenario;
+  document.querySelectorAll(".escenarios button").forEach(b => b.classList.toggle("activo", b.dataset.esc === S.escenario));
+  try { localStorage.setItem("icecrazy-escenario", S.escenario); } catch {}
+}
+const frenado = () => (ESCENARIOS[S.escenario]?.friccion ?? 0.32) * GRAV;
 
 // ================= PIEZAS =================
 const ESC = 0.55;
@@ -157,6 +221,7 @@ const S = {
   tEspera: 0,
   cpuAjuste: {},
   numCpu: 1,
+  escenario: "hielo",
 };
 let red = null;
 let elegido = 0;
@@ -212,6 +277,7 @@ function ir(p) {
   mostrarVitrina(!enJuego);
   salida.visible = enJuego;
   for (const k in marcas) marcas[k].visible = enJuego && k === S.modo;
+  paredes.visible = enJuego;
   if (enJuego) { camPos.set(0, 6.4, 15); camMira.set(0, 0.3, -2); }
   else { camPos.set(0, 4, 12.5); camMira.set(0, 1.4, 0); limpiarPiezas(); ocultarPrevia(); }
 }
@@ -247,6 +313,22 @@ function tarjetasModo(cont, alElegir) {
   }
 }
 tarjetasModo($("modosCpu"), modo => { activarAudio(); jugarSolo(modo); });
+function botonesEscenario(cont, alElegir) {
+  cont.innerHTML = "";
+  for (const [k, e] of Object.entries(ESCENARIOS)) {
+    const b = document.createElement("button");
+    b.type = "button"; b.dataset.esc = k;
+    const m = document.createElement("i"); m.style.background = "#" + e.cielo.toString(16).padStart(6, "0");
+    m.style.borderColor = "#" + e.tapete.toString(16).padStart(6, "0");
+    const n = document.createElement("span"); n.textContent = e.nombre;
+    const d = document.createElement("small"); d.textContent = e.desc;
+    b.append(m, n, d);
+    b.onclick = () => alElegir(k);
+    cont.append(b);
+  }
+}
+botonesEscenario($("escCpu"), k => { aplicarEscenario(k); sonido("tic"); });
+botonesEscenario($("escSala"), k => { if (S.rol === "host") { aplicarEscenario(k); publicarLobby(); } });
 tarjetasModo($("modosSala"), modo => { if (S.rol === "host") { S.modo = modo; publicarLobby(); } });
 
 const nombreJugador = () => ($("nombre").value.trim() || PJS[elegido].nombre).slice(0, 14);
@@ -345,7 +427,7 @@ $("btnCopiar").onclick = async () => {
 const enlaceSala = () => location.origin + location.pathname + "?sala=" + S.codigo;
 
 function publicarLobby() {
-  emitir({ t: "lobby", jugadores: S.jugadores, modo: S.modo, codigo: S.codigo });
+  emitir({ t: "lobby", jugadores: S.jugadores, modo: S.modo, codigo: S.codigo, escenario: S.escenario });
 }
 
 function renderSala() {
@@ -384,7 +466,7 @@ function renderSala() {
   $("btnEmpezar").disabled = S.jugadores.length < 2;
   $("btnEmpezar").textContent = S.jugadores.length < 2 ? "Faltan jugadores" : "Empezar";
   $("btnAddCpu").disabled = S.jugadores.length >= MAX_JUGADORES;
-  if (!host) $("salaEspera").textContent = `Juego elegido: ${MODOS[S.modo].nombre}. Esperando a que el anfitrión empiece…`;
+  if (!host) $("salaEspera").textContent = `Juego: ${MODOS[S.modo].nombre} · Escenario: ${ESCENARIOS[S.escenario].nombre}. Esperando a que el anfitrión empiece…`;
 }
 
 // ---------- mensajes del anfitrión ----------
@@ -446,11 +528,13 @@ function aplicar(msg) {
   switch (msg.t) {
     case "lobby":
       S.jugadores = msg.jugadores; S.modo = msg.modo; S.codigo = msg.codigo ?? S.codigo;
+      if (msg.escenario) aplicarEscenario(msg.escenario);
       if (S.pantalla !== "sala") ir("sala");
       renderSala();
       break;
     case "inicio":
       S.modo = msg.modo; S.jugadores = msg.jugadores;
+      if (msg.escenario) aplicarEscenario(msg.escenario);
       if (!autoridad()) limpiarPiezas();
       ir("juego");
       $("hudModo").textContent = MODOS[S.modo].nombre;
@@ -509,7 +593,7 @@ function iniciarPartida() {
   S.cpuAjuste = {};
   for (const j of S.jugadores) { j.pts = 0; j.tiros = 0; }
   S.turno = 0;
-  emitir({ t: "inicio", modo: S.modo, jugadores: S.jugadores });
+  emitir({ t: "inicio", modo: S.modo, jugadores: S.jugadores, escenario: S.escenario });
   if (S.modo === "bombardero") {
     const n = Math.min(16, 6 + 2 * S.jugadores.length);
     const mezcla = PJS.map((_, i) => i).sort(() => Math.random() - 0.5);
@@ -840,7 +924,7 @@ function previsualizar(tiro, color) {
     } else {
       const s2 = Math.hypot(v.x, v.z);
       if (s2 < 0.6) break;
-      const fr = Math.max(0, s2 - 7 * dt) / s2;
+      const fr = Math.max(0, s2 - frenado() * dt) / s2;
       v.x *= fr; v.z *= fr;
       pos.x += v.x * dt; pos.z += v.z * dt;
     }
@@ -976,6 +1060,7 @@ ajustar();
 
 const reloj = new THREE.Clock();
 const mira = camMira.clone();
+const posDeseada = new THREE.Vector3(), miraDeseada = new THREE.Vector3();
 camera.position.copy(camPos);
 let tAuto = 0;
 
@@ -1061,8 +1146,17 @@ function bucle() {
     if (v.t > 1.4) { scene.remove(v.obj); volando.splice(i, 1); }
   }
 
-  camera.position.lerp(camPos, Math.min(1, dt * 3));
-  mira.lerp(camMira, Math.min(1, dt * 3));
+  // durante el tiro la cámara sigue al cubito para ver qué pasó
+  posDeseada.copy(camPos); miraDeseada.copy(camMira);
+  const sigue = enJuego && ["volando", "evaluando", "pausa", "fin"].includes(S.fase) ? piezas.get(S.lanzadaId) : null;
+  if (sigue) {
+    const q = sigue.envoltura.position;
+    miraDeseada.lerp(q, 0.6);
+    posDeseada.x += THREE.MathUtils.clamp(q.x, -ARENA.x, ARENA.x) * 0.45;
+    posDeseada.z += THREE.MathUtils.clamp(q.z - SALIDA.z, -20, 0) * 0.3;
+  }
+  camera.position.lerp(posDeseada, Math.min(1, dt * 2.5));
+  mira.lerp(miraDeseada, Math.min(1, dt * 3));
   camera.lookAt(mira);
   renderer.render(scene, camera);
   requestAnimationFrame(bucle);
@@ -1074,6 +1168,9 @@ try {
   if (Number.isInteger(pj) && PJS[pj]) elegido = pj;
   $("nombre").value = localStorage.getItem("icecrazy-nombre") || "";
 } catch {}
+let escGuardado = "hielo";
+try { escGuardado = localStorage.getItem("icecrazy-escenario") || "hielo"; } catch {}
+aplicarEscenario(escGuardado);
 marcar(elegido, false);
 ir("presentacion");
 const salaUrl = limpiarCodigo(new URLSearchParams(location.search).get("sala"));

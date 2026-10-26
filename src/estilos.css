@@ -87,6 +87,11 @@ input {
 .modo span { font: 400 13px/1.35 var(--body); color: var(--tinta-suave); }
 .modo:hover, .modo.activo { border-color: var(--acento); }
 .modo.activo { box-shadow: 0 0 0 2px var(--acento) inset; }
+.escenarios { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.escenarios button { display: grid; grid-template-columns: 22px 1fr; column-gap: 8px; row-gap: 3px; align-items: center; text-align: left; padding: 8px 10px; font-size: 14px; border-radius: 12px; }
+.escenarios i { grid-row: span 2; width: 22px; height: 22px; border-radius: 7px; border: 4px solid; }
+.escenarios small { font: 400 11.5px/1.25 var(--body); color: var(--tinta-suave); }
+.escenarios button.activo { border-color: var(--acento); box-shadow: 0 0 0 2px var(--acento) inset; }
 .unirse { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 #codigo { text-transform: uppercase; letter-spacing: .3em; font-family: var(--display); font-size: 20px; text-align: center; }
 
@@ -148,6 +153,7 @@ input {
 .creditos dt { font: 700 11px/1.2 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-suave); }
 .creditos dd { margin: 2px 0 0; font-size: 15px; }
 
+@media (max-width: 760px) { .escenarios { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 560px) {
   .modos { grid-template-columns: 1fr; }
   .modo { grid-template-columns: 104px 1fr; align-items: center; }
@@ -158,4 +164,9 @@ input {
   .chip .nom { max-width: 7ch; }
   .codigo { font-size: 36px; }
 }
+/* en el escenario de noche los textos sueltos necesitan contraste */
+body[data-escenario="neon"] { background: #0b0d26; }
+body[data-escenario="neon"] .lema, body[data-escenario="neon"] .pie, body[data-escenario="neon"] .centro h3, body[data-escenario="neon"] .centro p { color: #e8ecff; text-shadow: 0 1px 8px #000; }
+body[data-escenario="neon"] #toast { color: #fff; text-shadow: 0 0 12px #ff3dbb, 0 2px 0 #000; }
+body[data-escenario="neon"] #toast small { color: #cfd6ff; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

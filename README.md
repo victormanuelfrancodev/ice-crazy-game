@@ -9,7 +9,12 @@ Juego 3D de lanzar figuritas de hielo, inspirado en los juegos de lanzar figurit
    - **Clásico**: lánzalo al aire. Si cae de cabeza vale 10, de pie 5, de lado 3, boca arriba 1.5 y boca abajo 0.
    - **Bombardero**: saca a los cubitos del círculo. Los que saques son tuyos.
    - **La línea**: gana el cubito que quede más cerca de la raya roja.
-3. Para lanzar, **arrastra hacia arriba y suelta**:
+3. Escoge un escenario. Todos tienen paredes donde rebotan los cubitos:
+   - **Pista de hielo**: resbalosa, con paredes de vidrio.
+   - **Mesa de madera**: agarre medio.
+   - **Patio de la escuela**: cemento con agarre y paredes de ladrillo.
+   - **Arcade neón**: de noche, con paredes que rebotan fuerte.
+4. Para lanzar, **arrastra hacia arriba y suelta**:
    - Mientras más largo el trazo, más fuerza.
    - El punto donde empiezas el trazo es desde dónde lanzas.
    - Un **trazo curvo** le da efecto al tiro.
@@ -46,6 +51,7 @@ En el repo, ve a **Settings → Pages → Build and deployment**, elige **Deploy
 | `index.html` | Pantallas: presentación, elegir cubito, sala, HUD, fin y créditos |
 | `src/estilos.css` | Estilos |
 | `src/personajes.js` | Los 15 cubitos: modelo 3D y forma física |
+| `src/escenarios.js` | Escenarios: texturas, colores, luces y fricción |
 | `src/red.js` | Salas en red con PeerJS (anfitrión e invitados) |
 | `src/main.js` | Escena, física, reglas de los juegos, CPU y entrada |
 

@@ -71,6 +71,19 @@ input {
 /* ---- elegir ---- */
 .volver { position: fixed; top: var(--arriba); left: var(--gutter-l); padding: 9px 12px; font-size: 14px; }
 .panel { width: min(600px, 100%); border-radius: 24px; padding: 14px; display: grid; gap: 12px; max-height: 68vh; overflow-y: auto; }
+.titulo-paso { margin: 0; text-align: center; font: 600 15px/1 var(--display); color: var(--tinta-suave); }
+#paso1 { width: min(480px, 100%); }
+.elegido { display: flex; align-items: center; gap: 10px; }
+.elegido .punto { width: 16px; height: 16px; border-radius: 50%; flex: none; }
+.elegido .quien { flex: 1; min-width: 0; display: grid; }
+.elegido b { font: 600 20px/1.1 var(--display); }
+.elegido small { font-size: 12.5px; color: var(--tinta-suave); }
+.elegido button { padding: 8px 12px; font-size: 14px; flex: none; }
+/* en pantallas anchas el panel del paso 2 va a la derecha para que se siga viendo tu cubito */
+@media (min-width: 900px) {
+  #elegir.paso2 { align-items: flex-end; justify-content: center; }
+  #elegir.paso2 #paso2 { width: min(560px, 52vw); max-height: calc(100vh - 140px); }
+}
 .elige { display: flex; align-items: center; gap: 10px; }
 .elige h2 { flex: 1; text-align: center; font-size: 26px; min-width: 0; }
 .elige small, .sala-cab small { display: block; font: 700 11px/1.2 var(--body); color: var(--tinta-suave); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 2px; }

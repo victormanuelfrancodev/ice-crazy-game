@@ -31,7 +31,8 @@
 <!-- ============ ELEGIR PERSONAJE + MODO ============ -->
 <section id="elegir" class="pantalla" hidden>
   <button class="volver" id="elegirVolver" type="button" data-i18n="nav.inicio">‹ Home</button>
-  <div class="panel vidrio">
+  <div class="panel vidrio" id="paso1">
+    <p class="titulo-paso" data-i18n="elegir.titulo">Pick your cube</p>
     <div class="elige">
       <button class="flecha" id="prev" type="button" data-i18n-aria="elegir.prev" aria-label="Previous cube">‹</button>
       <h2><small id="pjNum">Your cube · 1 of 15</small><span id="pjNombre">Frapé</span><em id="pjDesc"></em></h2>
@@ -40,6 +41,14 @@
     <label class="campo"><span data-i18n="elegir.nombre">Your name</span>
       <input id="nombre" maxlength="14" autocomplete="nickname" data-i18n-ph="elegir.nombrePh" placeholder="How others will see you">
     </label>
+    <button class="principal ancho" id="btnSiguiente" type="button" data-i18n="elegir.siguiente">Next</button>
+  </div>
+  <div class="panel vidrio" id="paso2" hidden>
+    <div class="elegido">
+      <span class="punto" id="p2Color"></span>
+      <div class="quien"><b id="p2Nombre">Frapé</b><small id="p2Desc"></small></div>
+      <button id="btnCambiarPj" type="button" data-i18n="elegir.cambiar">Change cube</button>
+    </div>
     <div class="pestanas" role="tablist">
       <button type="button" role="tab" id="tabCpu" class="activa" aria-selected="true" data-i18n="tab.cpu">Vs. CPU</button>
       <button type="button" role="tab" id="tabRed" aria-selected="false" data-i18n="tab.red">Online</button>

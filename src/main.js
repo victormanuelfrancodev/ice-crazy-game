@@ -225,6 +225,7 @@ const S = {
   tEspera: 0,
   cpuAjuste: {},
   numCpu: 1,
+  paso: 1,
   escenario: "hielo",
 };
 let red = null;
@@ -259,6 +260,9 @@ function marcar(i, sonar = true) {
   elegido = (i + PJS.length) % PJS.length;
   $("pjNombre").textContent = PJS[elegido].nombre;
   $("pjDesc").textContent = descPj(elegido);
+  $("p2Nombre").textContent = PJS[elegido].nombre;
+  $("p2Desc").textContent = descPj(elegido);
+  $("p2Color").style.background = "#" + PJS[elegido].color.toString(16).padStart(6, "0");
   $("pjNum").textContent = t("elegir.tuCubito") + " · " + t("elegir.num", { n: elegido + 1, t: PJS.length });
   aro.material.color.setHex(PJS[elegido].color).lerp(new THREE.Color(0xffffff), 0.3);
   saltoVitrina[elegido] = 1;
@@ -284,13 +288,30 @@ function ir(p) {
   for (const k in marcas) marcas[k].visible = enJuego && k === S.modo;
   paredes.visible = enJuego;
   if (enJuego) { camPos.set(0, 6.4, 15); camMira.set(0, 0.3, -2); }
-  else { camPos.set(0, 4, 12.5); camMira.set(0, 1.4, 0); limpiarPiezas(); ocultarPrevia(); }
+  else { camaraMenu(); limpiarPiezas(); ocultarPrevia(); }
 }
 
-$("btnJugar").onclick = () => { activarAudio(); ir("elegir"); };
+$("btnJugar").onclick = () => { activarAudio(); paso(1); ir("elegir"); };
 $("btnCreditos").onclick = () => ir("creditos");
 $("credCerrar").onclick = () => ir("presentacion");
-$("elegirVolver").onclick = () => ir("presentacion");
+$("elegirVolver").onclick = () => { if (S.paso === 2) paso(1); else ir("presentacion"); };
+$("btnSiguiente").onclick = () => { sonido("tic"); paso(2); };
+$("btnCambiarPj").onclick = () => paso(1);
+
+// la selección va en dos pasos: primero el cubito (con el carrusel a la vista), luego cómo jugar
+function paso(n) {
+  S.paso = n;
+  $("paso1").hidden = n !== 1;
+  $("paso2").hidden = n !== 2;
+  $("elegir").classList.toggle("paso2", n === 2);
+  $("elegirVolver").textContent = n === 2 ? t("nav.atras") : t("nav.inicio");
+  camaraMenu();
+}
+function camaraMenu() {
+  if (S.pantalla === "juego" || S.pantalla === "fin") return;
+  const lado = S.pantalla === "elegir" && S.paso === 2 && innerWidth >= 900 ? 3.4 : 0;
+  camPos.set(lado, 4, 12.5); camMira.set(lado, 1.4, 0);
+}
 
 // pestañas
 function pestana(red) {
@@ -1018,6 +1039,7 @@ addEventListener("keydown", e => {
     if (e.key === "2") elegirElev("medio");
     if (e.key === "3") elegirElev("rastrero");
   }
+  if (S.pantalla === "elegir" && S.paso === 1 && e.key === "Enter") { paso(2); return; }
   if (S.pantalla === "elegir") {
     if (e.key === "ArrowLeft") marcar(elegido - 1);
     if (e.key === "ArrowRight") marcar(elegido + 1);
@@ -1061,7 +1083,7 @@ function ajustar() {
   camera.fov = w / h < 0.85 ? 64 : 42;
   camera.updateProjectionMatrix();
 }
-addEventListener("resize", ajustar);
+addEventListener("resize", () => { ajustar(); camaraMenu(); });
 ajustar();
 
 const reloj = new THREE.Clock();
@@ -1187,6 +1209,7 @@ function cambiarIdioma(l) {
   botonesEscenario($("escSala"), k => { if (S.rol === "host") { aplicarEscenario(k); publicarLobby(); } });
   if (!$("btnCrear").disabled) $("btnCrear").textContent = t("red.crear");
   if (!$("btnUnirse").disabled) $("btnUnirse").textContent = t("red.unirse");
+  $("elegirVolver").textContent = S.paso === 2 ? t("nav.atras") : t("nav.inicio");
   if (S.pantalla === "sala") renderSala();
   if (S.pantalla === "juego" || S.pantalla === "fin") { renderHud(); $("hudModo").textContent = nombreModo(S.modo); }
   if (S.pantalla === "fin" && ultimoFin) mostrarFin(ultimoFin, false);
@@ -1210,6 +1233,7 @@ const salaUrl = limpiarCodigo(new URLSearchParams(location.search).get("sala"));
 if (salaUrl.length === 5) {
   $("codigo").value = salaUrl;
   ir("elegir");
+  paso(2);
   pestana(true);
   aviso(t("av.invitado"), t("av.invitadoSub"));
 }

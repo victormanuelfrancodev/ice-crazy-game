@@ -7,6 +7,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { PJS, crearCubito, BASE } from "./personajes.js";
 import { Anfitrion, Invitado, limpiarCodigo } from "./red.js";
 import { ESCENARIOS, texturaDe } from "./escenarios.js";
+import { t, tr, ponerIdioma, idioma, IDIOMAS, traducirPagina } from "./i18n.js";
 
 const $ = id => document.getElementById(id);
 const canvas = $("escena");
@@ -15,10 +16,13 @@ const MAX_JUGADORES = 12;
 const COLORES = ["#2f9bff", "#ff7a2f", "#1fb57a", "#a35cff", "#ff4f8b", "#d9a400", "#00a7c4", "#8a5a2b", "#5b6cff", "#e5484d", "#4c9e2f", "#c2410c"];
 
 const MODOS = {
-  clasico: { nombre: "Clásico", tiros: 5, desc: "Lánzalo al aire. De cabeza vale 10, de pie 5, de lado 3, boca arriba 1.5." },
-  bombardero: { nombre: "Bombardero", tiros: 4, desc: "Saca del círculo a los cubitos. Los que saques son tuyos." },
-  linea: { nombre: "La línea", tiros: 3, desc: "Gana el cubito que quede más cerca de la raya roja." },
+  clasico: { tiros: 5 },
+  bombardero: { tiros: 4 },
+  linea: { tiros: 3 },
 };
+const nombreModo = k => t("modo." + k);
+const nombreEsc = k => t("esc." + k);
+const descPj = i => t("forma." + (PJS[i].forma || "cubo")) + " · " + t("acc." + PJS[i].accesorio);
 
 // ================= RENDER =================
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -197,11 +201,11 @@ function limpiarPiezas() { for (const id of [...piezas.keys()]) quitarPieza(id);
 const ARRIBA = new CANNON.Vec3(0, 1, 0), FRENTE = new CANNON.Vec3(0, 0, 1);
 function postura(p) {
   const up = p.body.quaternion.vmult(ARRIBA), fr = p.body.quaternion.vmult(FRENTE);
-  if (up.y > 0.7) return { nombre: "De pie", pts: 5 };
-  if (up.y < -0.7) return { nombre: "De cabeza", pts: 10 };
-  if (fr.y > 0.7) return { nombre: "Boca arriba", pts: 1.5 };
-  if (fr.y < -0.7) return { nombre: "Boca abajo", pts: 0 };
-  return { nombre: "De lado", pts: 3 };
+  if (up.y > 0.7) return { k: "post.pie", pts: 5 };
+  if (up.y < -0.7) return { k: "post.cabeza", pts: 10 };
+  if (fr.y > 0.7) return { k: "post.arriba", pts: 1.5 };
+  if (fr.y < -0.7) return { k: "post.abajo", pts: 0 };
+  return { k: "post.lado", pts: 3 };
 }
 
 // ================= ESTADO =================
@@ -254,8 +258,8 @@ const saltoVitrina = PJS.map(() => 0);
 function marcar(i, sonar = true) {
   elegido = (i + PJS.length) % PJS.length;
   $("pjNombre").textContent = PJS[elegido].nombre;
-  $("pjDesc").textContent = PJS[elegido].desc;
-  $("pjNum").textContent = elegido + 1;
+  $("pjDesc").textContent = descPj(elegido);
+  $("pjNum").textContent = t("elegir.tuCubito") + " · " + t("elegir.num", { n: elegido + 1, t: PJS.length });
   aro.material.color.setHex(PJS[elegido].color).lerp(new THREE.Color(0xffffff), 0.3);
   saltoVitrina[elegido] = 1;
   try { localStorage.setItem("icecrazy-pj", String(elegido)); } catch {}
@@ -273,6 +277,7 @@ function ir(p) {
   const enJuego = p === "juego" || p === "fin";
   $("hud").hidden = !enJuego;
   $("salir").hidden = p !== "juego";
+  $("idioma").hidden = enJuego;
   if (!enJuego) { $("tipoTiro").hidden = true; $("ayuda").hidden = true; }
   mostrarVitrina(!enJuego);
   salida.visible = enJuego;
@@ -306,8 +311,8 @@ function tarjetasModo(cont, alElegir) {
   for (const [k, m] of Object.entries(MODOS)) {
     const b = document.createElement("button");
     b.type = "button"; b.className = "modo"; b.dataset.modo = k;
-    b.append(m.nombre);
-    const s = document.createElement("span"); s.textContent = m.desc; b.append(s);
+    b.append(nombreModo(k));
+    const s = document.createElement("span"); s.textContent = t("modo." + k + ".desc"); b.append(s);
     b.onclick = () => alElegir(k);
     cont.append(b);
   }
@@ -320,10 +325,11 @@ function botonesEscenario(cont, alElegir) {
     b.type = "button"; b.dataset.esc = k;
     const m = document.createElement("i"); m.style.background = "#" + e.cielo.toString(16).padStart(6, "0");
     m.style.borderColor = "#" + e.tapete.toString(16).padStart(6, "0");
-    const n = document.createElement("span"); n.textContent = e.nombre;
-    const d = document.createElement("small"); d.textContent = e.desc;
+    const n = document.createElement("span"); n.textContent = nombreEsc(k);
+    const d = document.createElement("small"); d.textContent = t("esc." + k + ".desc");
     b.append(m, n, d);
     b.onclick = () => alElegir(k);
+    b.classList.toggle("activo", k === S.escenario);
     cont.append(b);
   }
 }
@@ -363,7 +369,7 @@ $("btnCrear").onclick = async () => {
   activarAudio();
   cerrarRed();
   const b = $("btnCrear");
-  b.disabled = true; b.textContent = "Creando sala…";
+  b.disabled = true; b.textContent = t("red.creando");
   try {
     const host = new Anfitrion({ alMensaje: hostRecibe, alEntrar: hostEntra, alSalir: hostSale });
     const codigo = await host.abrir();
@@ -373,9 +379,9 @@ $("btnCrear").onclick = async () => {
     ir("sala");
     publicarLobby();
   } catch (e) {
-    aviso("No se pudo crear la sala", e.message);
+    aviso(t("av.noCrear"), t(e.message));
   } finally {
-    b.disabled = false; b.textContent = "Crear sala";
+    b.disabled = false; b.textContent = t("red.crear");
   }
 };
 
@@ -385,21 +391,21 @@ $("codigo").addEventListener("keydown", e => { if (e.key === "Enter") unirse(); 
 async function unirse() {
   activarAudio();
   const codigo = limpiarCodigo($("codigo").value);
-  if (codigo.length !== 5) { aviso("Escribe el código", "Son 5 letras o números"); return; }
+  if (codigo.length !== 5) { aviso(t("av.escribeCodigo"), t("av.codigo5")); return; }
   cerrarRed();
   const b = $("btnUnirse");
-  b.disabled = true; b.textContent = "Entrando…";
+  b.disabled = true; b.textContent = t("red.entrando");
   try {
-    const inv = new Invitado({ alMensaje: invitadoRecibe, alCerrar: () => { if (S.rol === "invitado") { aviso("Se cerró la sala", "El anfitrión salió o se perdió la conexión"); cerrarRed(); ir("elegir"); } } });
+    const inv = new Invitado({ alMensaje: invitadoRecibe, alCerrar: () => { if (S.rol === "invitado") { aviso(t("av.cerrada"), t("av.cerradaSub")); cerrarRed(); ir("elegir"); } } });
     await inv.unirse(codigo, { nombre: nombreJugador(), pj: elegido });
     red = inv;
     S.rol = "invitado"; S.miId = inv.id; S.codigo = codigo;
     ir("sala");
     renderSala();
   } catch (e) {
-    aviso("No pude entrar", e.message);
+    aviso(t("av.noEntrar"), t(e.message));
   } finally {
-    b.disabled = false; b.textContent = "Unirse";
+    b.disabled = false; b.textContent = t("red.unirse");
   }
 }
 
@@ -417,11 +423,11 @@ $("btnAddCpu").onclick = () => {
 $("btnEmpezar").onclick = () => { if (S.rol === "host") iniciarPartida(); };
 $("btnCopiar").onclick = async () => {
   const url = enlaceSala();
-  try { await navigator.clipboard.writeText(url); aviso("Enlace copiado"); }
+  try { await navigator.clipboard.writeText(url); aviso(t("av.copiado")); }
   catch {
     const r = document.createRange(); r.selectNodeContents($("salaEnlace"));
     const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
-    aviso("Copia el enlace seleccionado");
+    aviso(t("av.copiaSel"));
   }
 };
 const enlaceSala = () => location.origin + location.pathname + "?sala=" + S.codigo;
@@ -441,17 +447,17 @@ function renderSala() {
     const punto = document.createElement("span"); punto.className = "punto"; punto.style.background = j.color;
     const quien = document.createElement("div"); quien.className = "quien";
     const b = document.createElement("b"); b.textContent = j.nombre;
-    const s = document.createElement("span"); s.textContent = PJS[j.pj].nombre + " · " + PJS[j.pj].desc;
+    const s = document.createElement("span"); s.textContent = PJS[j.pj].nombre + " · " + descPj(j.pj);
     quien.append(b, s);
     li.append(punto, quien);
-    const etq = i === 0 ? "Anfitrión" : j.cpu ? "CPU" : j.id === S.miId ? "Tú" : "";
-    if (j.id === S.miId && i === 0) li.append(Object.assign(document.createElement("span"), { className: "etq", textContent: "Tú" }));
+    const etq = i === 0 ? t("sala.anfitrion") : j.cpu ? "CPU" : j.id === S.miId ? t("sala.tu") : "";
+    if (j.id === S.miId && i === 0) li.append(Object.assign(document.createElement("span"), { className: "etq", textContent: t("sala.tu") }));
     if (etq) li.append(Object.assign(document.createElement("span"), { className: "etq", textContent: etq }));
     if (S.rol === "host" && i > 0) {
       const x = document.createElement("button");
-      x.type = "button"; x.className = "quitar"; x.textContent = "✕"; x.setAttribute("aria-label", "Quitar a " + j.nombre);
+      x.type = "button"; x.className = "quitar"; x.textContent = "✕"; x.setAttribute("aria-label", t("sala.quitar", { n: j.nombre }));
       x.onclick = () => {
-        if (!j.cpu) red.expulsar(j.id, { t: "rechazo", motivo: "El anfitrión te sacó de la sala." });
+        if (!j.cpu) red.expulsar(j.id, { t: "rechazo", motivo: ["rech.sacado"] });
         S.jugadores = S.jugadores.filter(q => q !== j);
         publicarLobby();
       };
@@ -464,20 +470,20 @@ function renderSala() {
   $("salaEspera").hidden = host;
   document.querySelectorAll("#modosSala .modo").forEach(b => b.classList.toggle("activo", b.dataset.modo === S.modo));
   $("btnEmpezar").disabled = S.jugadores.length < 2;
-  $("btnEmpezar").textContent = S.jugadores.length < 2 ? "Faltan jugadores" : "Empezar";
+  $("btnEmpezar").textContent = S.jugadores.length < 2 ? t("sala.faltan") : t("sala.empezar");
   $("btnAddCpu").disabled = S.jugadores.length >= MAX_JUGADORES;
-  if (!host) $("salaEspera").textContent = `Juego: ${MODOS[S.modo].nombre} · Escenario: ${ESCENARIOS[S.escenario].nombre}. Esperando a que el anfitrión empiece…`;
+  if (!host) $("salaEspera").textContent = t("sala.espera", { juego: nombreModo(S.modo), esc: nombreEsc(S.escenario) });
 }
 
 // ---------- mensajes del anfitrión ----------
 function hostEntra(id, msg) {
-  if (S.pantalla !== "sala") { red.expulsar(id, { t: "rechazo", motivo: "La partida ya empezó. Entra cuando termine." }); return; }
-  if (S.jugadores.length >= MAX_JUGADORES) { red.expulsar(id, { t: "rechazo", motivo: "La sala está llena." }); return; }
+  if (S.pantalla !== "sala") { red.expulsar(id, { t: "rechazo", motivo: ["rech.empezo"] }); return; }
+  if (S.jugadores.length >= MAX_JUGADORES) { red.expulsar(id, { t: "rechazo", motivo: ["rech.llena"] }); return; }
   const pj = Number.isInteger(msg.pj) && PJS[msg.pj] ? msg.pj : 0;
   const nombre = String(msg.nombre || PJS[pj].nombre).slice(0, 14);
   S.jugadores.push(nuevoJugador(id, nombre, pj));
   publicarLobby();
-  aviso(`${nombre} entró`);
+  aviso(t("av.entro", { n: nombre }));
   sonido("tic");
 }
 function hostSale(id) {
@@ -489,7 +495,7 @@ function hostSale(id) {
     return;
   }
   j.fuera = true;
-  emitir({ t: "aviso", a: `${j.nombre} se fue`, b: "" });
+  emitir({ t: "aviso", a: ["av.seFue", { n: j.nombre }], b: "" });
   if (jugadorTurno() === j && S.fase === "apuntar") {
     quitarPieza(S.lanzadaId);
     S.fase = "pausa";
@@ -517,7 +523,7 @@ function limpiarTiro(t) {
 
 // ---------- mensajes del invitado ----------
 function invitadoRecibe(msg) {
-  if (msg.t === "rechazo") { aviso("No pudiste entrar", msg.motivo); cerrarRed(); ir("elegir"); return; }
+  if (msg.t === "rechazo") { aviso(t("av.noEntrar"), tr(msg.motivo)); cerrarRed(); ir("elegir"); return; }
   if (msg.t === "est") { aplicarEstado(msg); return; }
   aplicar(msg);
 }
@@ -537,7 +543,7 @@ function aplicar(msg) {
       if (msg.escenario) aplicarEscenario(msg.escenario);
       if (!autoridad()) limpiarPiezas();
       ir("juego");
-      $("hudModo").textContent = MODOS[S.modo].nombre;
+      $("hudModo").textContent = nombreModo(S.modo);
       S.elev = S.modo === "linea" ? "rastrero" : "medio";
       elegirElev(S.elev);
       ultimoTurnoAvisado = "";
@@ -547,7 +553,7 @@ function aplicar(msg) {
       if (!autoridad()) S.fase = msg.fase;
       renderHud();
       break;
-    case "aviso": aviso(msg.a, msg.b); if (msg.s) sonido(msg.s); break;
+    case "aviso": aviso(tr(msg.a), tr(msg.b)); if (msg.s) sonido(msg.s); break;
     case "son": sonido(msg.q); break;
     case "etiqueta": etiqueta(msg.id, msg.texto); break;
     case "cercano": marcarAnillo(msg.id); break;
@@ -567,22 +573,20 @@ function renderHud() {
     const n = document.createElement("span"); n.className = "nom"; n.textContent = j.nombre;
     const b = document.createElement("b"); b.textContent = fmt(j.pts);
     li.append(p, n);
-    if (j.id === S.miId) li.append(Object.assign(document.createElement("small"), { textContent: "tú" }));
+    if (j.id === S.miId) li.append(Object.assign(document.createElement("small"), { textContent: t("hud.tu") }));
     li.append(b);
     ul.append(li);
   });
   const j = jugadorTurno();
   const total = MODOS[S.modo].tiros;
-  if (j && S.fase !== "fin") $("hudRonda").textContent = `Turno de ${j.nombre} · tiro ${Math.min(total, j.tiros + 1)} de ${total}`;
+  if (j && S.fase !== "fin") $("hudRonda").textContent = t("hud.ronda", { n: j.nombre, k: Math.min(total, j.tiros + 1), t: total });
   const mio = esMiTurno();
   $("tipoTiro").hidden = !(mio && S.modo !== "clasico");
   $("ayuda").hidden = !mio;
   if (mio) {
-    $("ayuda").textContent = S.modo === "clasico"
-      ? "Arrastra hacia arriba y suelta · un trazo curvo le da efecto"
-      : "Empieza el trazo a un lado para lanzar desde ahí · trazo curvo = efecto";
+    $("ayuda").textContent = S.modo === "clasico" ? t("ayuda.clasico") : t("ayuda.otros");
     const clave = S.turno + ":" + j.tiros;
-    if (clave !== ultimoTurnoAvisado && S.jugadores.filter(q => !q.cpu).length > 1) { ultimoTurnoAvisado = clave; aviso("¡Te toca!"); sonido("bien"); }
+    if (clave !== ultimoTurnoAvisado && S.jugadores.filter(q => !q.cpu).length > 1) { ultimoTurnoAvisado = clave; aviso(t("av.teToca")); sonido("bien"); }
   }
 }
 
@@ -686,8 +690,8 @@ function evaluar() {
   if (S.modo === "clasico") {
     const r = postura(p);
     j.pts += r.pts;
-    emitir({ t: "aviso", a: r.nombre, b: `${j.nombre} +${fmt(r.pts)}`, s: r.pts >= 5 ? "bien" : r.pts > 0 ? "tic" : "mal" });
-    emitir({ t: "etiqueta", id: p.id, texto: r.nombre });
+    emitir({ t: "aviso", a: [r.k], b: ["av.mas", { n: j.nombre, p: fmt(r.pts) }], s: r.pts >= 5 ? "bien" : r.pts > 0 ? "tic" : "mal" });
+    emitir({ t: "etiqueta", id: p.id, texto: [r.k] });
   } else if (S.modo === "bombardero") {
     let sacados = 0;
     for (const q of [...piezas.values()]) {
@@ -696,10 +700,10 @@ function evaluar() {
       if (Math.hypot(dx, dz) > RADIO || q.body.position.y < -1) { sacados++; emitir({ t: "sacar", id: q.id, hacia: S.turno }); }
     }
     j.pts += sacados;
-    emitir({ t: "aviso", a: sacados ? `¡Sacó ${sacados}!` : "Nada…", b: j.nombre, s: sacados ? "bien" : "mal" });
+    emitir({ t: "aviso", a: sacados ? ["av.saco", { n: sacados }] : ["av.nada"], b: j.nombre, s: sacados ? "bien" : "mal" });
   } else {
     const d = Math.abs(p.body.position.z - LINEA_Z);
-    emitir({ t: "aviso", a: `${(d * 20).toFixed(0)} cm`, b: `de la raya · ${j.nombre}`, s: d < 1 ? "bien" : "tic" });
+    emitir({ t: "aviso", a: ["av.cm", { cm: (d * 20).toFixed(0) }], b: ["av.deLaRaya", { n: j.nombre }], s: d < 1 ? "bien" : "tic" });
     puntuarLinea();
   }
 }
@@ -746,35 +750,37 @@ function terminar() {
   let detalle;
   if (S.modo === "linea") {
     const { mejor, dm } = puntuarLinea();
-    detalle = mejor ? `El más cercano quedó a ${(dm * 20).toFixed(0)} cm de la raya.` : "Nadie quedó en la mesa.";
-  } else if (S.modo === "bombardero") detalle = "Cada cubito sacado del círculo vale 1.";
-  else detalle = "De cabeza 10 · de pie 5 · de lado 3 · boca arriba 1.5 · boca abajo 0";
+    detalle = mejor ? ["fin.detLinea", { cm: (dm * 20).toFixed(0) }] : ["fin.detNadie"];
+  } else if (S.modo === "bombardero") detalle = ["fin.detBomb"];
+  else detalle = ["fin.detClasico"];
   const ranking = S.jugadores.map(j => ({ nombre: j.nombre, pts: j.pts, color: j.color, id: j.id, fuera: j.fuera })).sort((a, b) => b.pts - a.pts);
   emitir({ t: "fin", ranking, detalle });
 }
 
-function mostrarFin(msg) {
-  ir("fin");
+let ultimoFin = null;
+function mostrarFin(msg, sonar = true) {
+  ultimoFin = msg;
+  if (S.pantalla !== "fin") ir("fin");
   const r = msg.ranking;
   const empate = r.length > 1 && r[0].pts === r[1].pts;
   const yoGane = r[0]?.id === S.miId && !empate;
-  $("finTitulo").textContent = empate ? "¡Empate!" : yoGane ? "¡Ganaste!" : `¡Ganó ${r[0]?.nombre}!`;
+  $("finTitulo").textContent = empate ? t("fin.empate") : yoGane ? t("fin.ganaste") : t("fin.gano", { n: r[0]?.nombre });
   const ol = $("finRanking");
   ol.innerHTML = "";
   r.forEach((j, i) => {
     const li = document.createElement("li");
     li.append(Object.assign(document.createElement("span"), { className: "pos", textContent: i + 1 }));
     const p = document.createElement("span"); p.className = "punto"; p.style.background = j.color; li.append(p);
-    li.append(Object.assign(document.createElement("span"), { className: "nom", textContent: j.nombre + (j.id === S.miId ? " (tú)" : "") + (j.fuera ? " · salió" : "") }));
+    li.append(Object.assign(document.createElement("span"), { className: "nom", textContent: j.nombre + (j.id === S.miId ? t("fin.tu") : "") + (j.fuera ? t("fin.salio") : "") }));
     li.append(Object.assign(document.createElement("b"), { textContent: fmt(j.pts) }));
     ol.append(li);
   });
-  $("finDetalle").textContent = msg.detalle;
+  $("finDetalle").textContent = tr(msg.detalle);
   const mando = autoridad();
   $("otraVez").hidden = !mando;
-  $("aMenu").textContent = S.rol === "host" ? "Volver a la sala" : S.rol === "invitado" ? "Salir" : "Menú";
+  $("aMenu").textContent = S.rol === "host" ? t("fin.sala") : S.rol === "invitado" ? t("fin.salir") : t("fin.menu");
   $("finEspera").hidden = mando;
-  sonido(yoGane ? "bien" : "mal");
+  if (sonar) sonido(yoGane ? "bien" : "mal");
 }
 $("otraVez").onclick = () => {
   if (S.rol === "host") S.jugadores = S.jugadores.filter(j => !j.fuera);
@@ -856,8 +862,8 @@ function etiqueta(id, texto) {
   const c = document.createElement("canvas"); c.width = 256; c.height = 72;
   const x = c.getContext("2d");
   x.fillStyle = "rgba(255,255,255,.92)"; x.beginPath(); x.roundRect(4, 4, 248, 64, 32); x.fill();
-  x.fillStyle = "#1b2a4a"; x.font = "600 34px Fredoka, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
-  x.fillText(texto, 128, 38);
+  x.fillStyle = "#1b2a4a"; x.font = '600 34px Fredoka, "M PLUS Rounded 1c", sans-serif'; x.textAlign = "center"; x.textBaseline = "middle";
+  x.fillText(tr(texto), 128, 38);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
   sp.scale.set(1.8, 0.5, 1);
   scene.add(sp);
@@ -1168,6 +1174,33 @@ try {
   if (Number.isInteger(pj) && PJS[pj]) elegido = pj;
   $("nombre").value = localStorage.getItem("icecrazy-nombre") || "";
 } catch {}
+// ---------- idioma ----------
+function cambiarIdioma(l) {
+  ponerIdioma(l);
+  try { localStorage.setItem("icecrazy-idioma", idioma()); } catch {}
+  traducirPagina();
+  document.querySelectorAll("#idioma button").forEach(b => b.classList.toggle("activo", b.dataset.l === idioma()));
+  marcar(elegido, false);
+  tarjetasModo($("modosCpu"), modo => { activarAudio(); jugarSolo(modo); });
+  tarjetasModo($("modosSala"), modo => { if (S.rol === "host") { S.modo = modo; publicarLobby(); } });
+  botonesEscenario($("escCpu"), k => { aplicarEscenario(k); sonido("tic"); });
+  botonesEscenario($("escSala"), k => { if (S.rol === "host") { aplicarEscenario(k); publicarLobby(); } });
+  if (!$("btnCrear").disabled) $("btnCrear").textContent = t("red.crear");
+  if (!$("btnUnirse").disabled) $("btnUnirse").textContent = t("red.unirse");
+  if (S.pantalla === "sala") renderSala();
+  if (S.pantalla === "juego" || S.pantalla === "fin") { renderHud(); $("hudModo").textContent = nombreModo(S.modo); }
+  if (S.pantalla === "fin" && ultimoFin) mostrarFin(ultimoFin, false);
+}
+for (const [l, etq] of Object.entries(IDIOMAS)) {
+  const b = document.createElement("button");
+  b.type = "button"; b.dataset.l = l; b.textContent = etq;
+  b.onclick = () => cambiarIdioma(l);
+  $("idioma").append(b);
+}
+let idiomaGuardado = "en";
+try { idiomaGuardado = localStorage.getItem("icecrazy-idioma") || "en"; } catch {}
+cambiarIdioma(idiomaGuardado);
+
 let escGuardado = "hielo";
 try { escGuardado = localStorage.getItem("icecrazy-escenario") || "hielo"; } catch {}
 aplicarEscenario(escGuardado);
@@ -1178,6 +1211,6 @@ if (salaUrl.length === 5) {
   $("codigo").value = salaUrl;
   ir("elegir");
   pestana(true);
-  aviso("Te invitaron a una sala", "Elige tu cubito y toca Unirse");
+  aviso(t("av.invitado"), t("av.invitadoSub"));
 }
 bucle();

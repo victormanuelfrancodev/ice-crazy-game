@@ -12,7 +12,7 @@ export function nuevoCodigo() {
 export const limpiarCodigo = c => (c || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5);
 
 function hayPeer() {
-  if (typeof window.Peer !== "function") throw new Error("No se pudo cargar la librería de red. Revisa tu conexión.");
+  if (typeof window.Peer !== "function") throw new Error("red.noLib");
 }
 
 export class Anfitrion {
@@ -61,7 +61,7 @@ export class Invitado {
     return new Promise((resolve, reject) => {
       const peer = new window.Peer({ debug: 0 });
       let listo = false;
-      const t = setTimeout(() => { if (!listo) { peer.destroy(); reject(new Error("No encontré esa sala. Revisa el código.")); } }, 12000);
+      const t = setTimeout(() => { if (!listo) { peer.destroy(); reject(new Error("red.noSala")); } }, 12000);
       peer.on("open", id => {
         this.peer = peer; this.id = id;
         const conn = peer.connect(PREFIJO + codigo, { reliable: true, serialization: "json" });
@@ -79,11 +79,12 @@ export class Invitado {
   cerrar() { try { this.peer?.destroy(); } catch {} }
 }
 
+// devuelve la clave del texto de error (se traduce en main.js)
 function traducir(err) {
   switch (err?.type) {
-    case "peer-unavailable": return "No encontré esa sala. Revisa el código.";
-    case "network": case "server-error": case "socket-error": return "No hay conexión con el servidor de salas. Intenta de nuevo.";
-    case "browser-incompatible": return "Este navegador no permite jugar en red.";
-    default: return "Algo falló con la conexión (" + (err?.type || "desconocido") + ").";
+    case "peer-unavailable": return "red.noSala";
+    case "network": case "server-error": case "socket-error": return "red.servidor";
+    case "browser-incompatible": return "red.navegador";
+    default: return "red.otro";
   }
 }

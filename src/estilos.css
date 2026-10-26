@@ -7,8 +7,8 @@
   --acento: #ff5c7f;
   --vidrio: rgba(255, 255, 255, .8);
   --borde: rgba(27, 42, 74, .12);
-  --display: "Fredoka", ui-rounded, system-ui, sans-serif;
-  --body: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
+  --display: "Fredoka", "M PLUS Rounded 1c", ui-rounded, system-ui, sans-serif;
+  --body: "Nunito Sans", "M PLUS Rounded 1c", ui-sans-serif, system-ui, sans-serif;
   --gutter-l: max(16px, env(safe-area-inset-left, 0px));
   --gutter-r: max(16px, env(safe-area-inset-right, 0px));
   --abajo: max(14px, env(safe-area-inset-bottom, 0px));
@@ -50,6 +50,11 @@ input {
 }
 .pantalla > * { pointer-events: auto; }
 .pantalla.centrada { justify-content: center; background: rgba(220, 236, 255, .35); pointer-events: auto; }
+
+/* ---- idioma ---- */
+#idioma { position: fixed; top: var(--arriba); right: var(--gutter-r); display: flex; gap: 2px; padding: 3px; border-radius: 12px; z-index: 5; }
+#idioma button { padding: 7px 10px; font-size: 13px; border-radius: 9px; background: transparent; border-color: transparent; }
+#idioma button.activo { background: var(--tinta); color: #fff; }
 
 /* ---- presentación ---- */
 #presentacion { justify-content: space-between; padding-top: max(7vh, var(--arriba)); }

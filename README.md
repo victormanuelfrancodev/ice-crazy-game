@@ -1,6 +1,6 @@
 # Ice Crazy — Tiro de Cubitos
 
-Juego 3D de lanzar figuritas de hielo, inspirado en los juegos de lanzar figuritas de plástico de los 90 y en las tabas. Se juega en el navegador, solo contra la computadora o en red con hasta 12 jugadores.
+Juego 3D de lanzar figuritas de hielo, inspirado en los juegos de lanzar figuritas de plástico de los 90 y en las tabas. Se juega en el navegador, solo contra la computadora o en red con hasta 12 jugadores. Está en inglés (predeterminado), español y japonés; el idioma se cambia arriba a la derecha.
 
 ## Cómo se juega
 
@@ -52,6 +52,7 @@ En el repo, ve a **Settings → Pages → Build and deployment**, elige **Deploy
 | `src/estilos.css` | Estilos |
 | `src/personajes.js` | Los 15 cubitos: modelo 3D y forma física |
 | `src/escenarios.js` | Escenarios: texturas, colores, luces y fricción |
+| `src/i18n.js` | Textos en inglés, español y japonés |
 | `src/red.js` | Salas en red con PeerJS (anfitrión e invitados) |
 | `src/main.js` | Escena, física, reglas de los juegos, CPU y entrada |
 

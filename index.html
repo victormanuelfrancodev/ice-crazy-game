@@ -1,68 +1,70 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ice Crazy</title>
 <meta name="description" content="Tiro de Cubitos: lanza figuritas de hielo con física 3D, contra la computadora o en red con tus amigos.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&family=M+PLUS+Rounded+1c:wght@500;700&display=swap">
 <link rel="stylesheet" href="src/estilos.css">
 </head>
 <body>
 
-<canvas id="escena" aria-label="Mesa de juego en 3D"></canvas>
+<canvas id="escena" data-i18n-aria="escena" aria-label="3D game table"></canvas>
+
+<div id="idioma" class="vidrio" role="group" data-i18n-aria="idioma" aria-label="Language"></div>
 
 <!-- ============ PRESENTACIÓN ============ -->
 <section id="presentacion" class="pantalla">
   <div class="logo">
     <h1>Ice Crazy</h1>
-    <p class="lema">Tiro de Cubitos</p>
+    <p class="lema" data-i18n="pres.lema">Ice Cube Toss</p>
   </div>
   <div class="acciones">
-    <button class="principal grande" id="btnJugar" type="button">Jugar</button>
-    <button id="btnCreditos" type="button">Créditos</button>
+    <button class="principal grande" id="btnJugar" type="button" data-i18n="pres.jugar">Play</button>
+    <button id="btnCreditos" type="button" data-i18n="pres.creditos">Credits</button>
   </div>
-  <p class="pie">15 cubitos de hielo · 3 juegos de lanzar · solo o en red</p>
+  <p class="pie" data-i18n="pres.pie">15 ice cubes · 3 throwing games · solo or online</p>
 </section>
 
 <!-- ============ ELEGIR PERSONAJE + MODO ============ -->
 <section id="elegir" class="pantalla" hidden>
-  <button class="volver" id="elegirVolver" type="button">‹ Inicio</button>
+  <button class="volver" id="elegirVolver" type="button" data-i18n="nav.inicio">‹ Home</button>
   <div class="panel vidrio">
     <div class="elige">
-      <button class="flecha" id="prev" type="button" aria-label="Personaje anterior">‹</button>
-      <h2><small>Tu cubito · <span id="pjNum">1</span> de 15</small><span id="pjNombre">Frapé</span><em id="pjDesc"></em></h2>
-      <button class="flecha" id="next" type="button" aria-label="Personaje siguiente">›</button>
+      <button class="flecha" id="prev" type="button" data-i18n-aria="elegir.prev" aria-label="Previous cube">‹</button>
+      <h2><small id="pjNum">Your cube · 1 of 15</small><span id="pjNombre">Frapé</span><em id="pjDesc"></em></h2>
+      <button class="flecha" id="next" type="button" data-i18n-aria="elegir.next" aria-label="Next cube">›</button>
     </div>
-    <label class="campo">Tu nombre
-      <input id="nombre" maxlength="14" autocomplete="nickname" placeholder="Cómo te verán los demás">
+    <label class="campo"><span data-i18n="elegir.nombre">Your name</span>
+      <input id="nombre" maxlength="14" autocomplete="nickname" data-i18n-ph="elegir.nombrePh" placeholder="How others will see you">
     </label>
     <div class="pestanas" role="tablist">
-      <button type="button" role="tab" id="tabCpu" class="activa" aria-selected="true">Contra la CPU</button>
-      <button type="button" role="tab" id="tabRed" aria-selected="false">En red</button>
+      <button type="button" role="tab" id="tabCpu" class="activa" aria-selected="true" data-i18n="tab.cpu">Vs. CPU</button>
+      <button type="button" role="tab" id="tabRed" aria-selected="false" data-i18n="tab.red">Online</button>
     </div>
     <div id="panelCpu">
       <div class="fila-etq">
-        <span>Rivales</span>
+        <span data-i18n="etq.rivales">Opponents</span>
         <div class="segmento" id="numCpu">
           <button type="button" data-n="1" class="activo">1</button>
           <button type="button" data-n="2">2</button>
           <button type="button" data-n="3">3</button>
         </div>
       </div>
-      <div class="fila-etq"><span>Escenario</span></div>
+      <div class="fila-etq"><span data-i18n="etq.escenario">Arena</span></div>
       <div class="escenarios" id="escCpu"></div>
-      <div class="fila-etq"><span>Juego</span></div>
+      <div class="fila-etq"><span data-i18n="etq.juego">Game</span></div>
       <div class="modos" id="modosCpu"></div>
     </div>
     <div id="panelRed" hidden>
-      <button class="principal ancho" id="btnCrear" type="button">Crear sala</button>
+      <button class="principal ancho" id="btnCrear" type="button" data-i18n="red.crear">Create room</button>
       <div class="unirse">
-        <input id="codigo" maxlength="5" placeholder="Código" autocapitalize="characters" autocomplete="off" aria-label="Código de la sala">
-        <button id="btnUnirse" type="button">Unirse</button>
+        <input id="codigo" maxlength="5" data-i18n-ph="red.codigoPh" placeholder="Code" autocapitalize="characters" autocomplete="off" data-i18n-aria="red.codigoAria" aria-label="Room code">
+        <button id="btnUnirse" type="button" data-i18n="red.unirse">Join</button>
       </div>
-      <p class="nota">El que crea la sala comparte el código o el enlace. Entran hasta 12 jugadores.</p>
+      <p class="nota" data-i18n="red.nota">The host shares the code or the link. Up to 12 players.</p>
     </div>
   </div>
 </section>
@@ -72,26 +74,26 @@
   <div class="panel vidrio sala">
     <div class="sala-cab">
       <div>
-        <small>Código de la sala</small>
+        <small data-i18n="sala.codigo">Room code</small>
         <div class="codigo" id="salaCodigo">-----</div>
       </div>
-      <button id="btnCopiar" type="button">Copiar enlace</button>
+      <button id="btnCopiar" type="button" data-i18n="sala.copiar">Copy link</button>
     </div>
     <p class="enlace" id="salaEnlace"></p>
-    <div class="fila-etq"><span>Jugadores <b id="salaCuenta">1/12</b></span></div>
+    <div class="fila-etq"><span><span data-i18n="etq.jugadores">Players</span> <b id="salaCuenta">1/12</b></span></div>
     <ul class="jugadores" id="salaLista"></ul>
     <div id="salaHost">
-      <div class="fila-etq"><span>Escenario</span></div>
+      <div class="fila-etq"><span data-i18n="etq.escenario">Arena</span></div>
       <div class="escenarios" id="escSala"></div>
-      <div class="fila-etq"><span>Juego</span></div>
+      <div class="fila-etq"><span data-i18n="etq.juego">Game</span></div>
       <div class="modos" id="modosSala"></div>
       <div class="fila-botones">
         <button id="btnAddCpu" type="button">+ CPU</button>
-        <button class="principal" id="btnEmpezar" type="button">Empezar</button>
+        <button class="principal" id="btnEmpezar" type="button">Start</button>
       </div>
     </div>
-    <p class="nota" id="salaEspera" hidden>Esperando a que el anfitrión empiece…</p>
-    <button class="volver-chico" id="btnSalirSala" type="button">Salir de la sala</button>
+    <p class="nota" id="salaEspera" hidden></p>
+    <button class="volver-chico" id="btnSalirSala" type="button" data-i18n="sala.salir">Leave room</button>
   </div>
 </section>
 
@@ -100,11 +102,11 @@
   <div class="centro"><h3 id="hudModo">Clásico</h3><p id="hudRonda"></p></div>
   <ul class="chips" id="chips"></ul>
 </div>
-<button id="salir" type="button" hidden>‹ Salir</button>
-<div id="tipoTiro" class="vidrio" hidden role="group" aria-label="Tipo de tiro">
-  <button type="button" data-elev="alto">Bombeado <kbd>1</kbd></button>
-  <button type="button" data-elev="medio">Medio <kbd>2</kbd></button>
-  <button type="button" data-elev="rastrero">Rastrero <kbd>3</kbd></button>
+<button id="salir" type="button" hidden data-i18n="juego.salir">‹ Leave</button>
+<div id="tipoTiro" class="vidrio" hidden role="group" data-i18n-aria="tiro.aria" aria-label="Throw type">
+  <button type="button" data-elev="alto"><span data-i18n="tiro.alto">Lob</span> <kbd>1</kbd></button>
+  <button type="button" data-elev="medio"><span data-i18n="tiro.medio">Medium</span> <kbd>2</kbd></button>
+  <button type="button" data-elev="rastrero"><span data-i18n="tiro.rastrero">Low</span> <kbd>3</kbd></button>
 </div>
 <div id="ayuda" hidden></div>
 <div id="toast" class="oculto"></div>
@@ -116,41 +118,41 @@
     <ol class="ranking" id="finRanking"></ol>
     <p id="finDetalle"></p>
     <div class="fila-botones">
-      <button class="principal" id="otraVez" type="button">Revancha</button>
-      <button id="aMenu" type="button">Menú</button>
+      <button class="principal" id="otraVez" type="button" data-i18n="fin.revancha">Rematch</button>
+      <button id="aMenu" type="button">Menu</button>
     </div>
-    <p class="nota" id="finEspera" hidden>El anfitrión decide la revancha.</p>
+    <p class="nota" id="finEspera" hidden data-i18n="fin.espera">The host decides on a rematch.</p>
   </div>
 </section>
 
 <!-- ============ CRÉDITOS ============ -->
 <section id="creditos" class="pantalla centrada" hidden>
   <div class="tarjeta vidrio creditos" role="dialog" aria-labelledby="credTitulo">
-    <h2 id="credTitulo">Créditos</h2>
+    <h2 id="credTitulo" data-i18n="cred.titulo">Credits</h2>
     <div class="autor">
-      <small>Un juego de</small>
+      <small data-i18n="cred.de">A game by</small>
       <strong>Victor Manuel Franco</strong>
       <a href="https://www.youtube.com/@vicktorManuel" target="_blank" rel="noopener">Un dev Mexicano en Japón · YouTube</a>
     </div>
-    <h3>Mis otros productos</h3>
+    <h3 data-i18n="cred.otros">My other products</h3>
     <ul class="productos">
-      <li><a href="https://historiasenjapones.com" target="_blank" rel="noopener"><b>Historias en japonés</b><span>Aprende japonés leyendo cuentos</span></a></li>
-      <li><a href="https://unihongo.com" target="_blank" rel="noopener"><b>Unihongo</b><span>Japonés con Mocchi, tu tutor de IA</span></a></li>
-      <li><a href="https://apps.apple.com/us/app/kanjiguess/id6811568689" target="_blank" rel="noopener"><b>KanjiGuess</b><span>Adivina el kanji del día</span></a></li>
-      <li><a href="https://apps.apple.com/us/app/the-hiraganas-king/id1637657106" target="_blank" rel="noopener"><b>The Hiraganas King</b><span>Domina el hiragana jugando</span></a></li>
-      <li><a href="https://apps.apple.com/us/app/tamagowoulda-%E8%8B%B1%E8%AA%9E%E3%83%9A%E3%83%83%E3%83%88/id6814585506" target="_blank" rel="noopener"><b>Tamagowoulda</b><span>Mascota virtual para aprender inglés</span></a></li>
-      <li><a href="https://apps.apple.com/us/app/kotozute/id6807708667" target="_blank" rel="noopener"><b>Kotozute</b><span>Mensajes lindos de tus amigos</span></a></li>
-      <li><a href="https://apps.apple.com/us/app/masternihongon5/id6737253015" target="_blank" rel="noopener"><b>MasterNihongoN5</b><span>Prepárate para el JLPT N5</span></a></li>
-      <li><a href="https://apps.apple.com/us/app/dictionary-spanish-japanese/id1592032164" target="_blank" rel="noopener"><b>Dictionary Spanish Japanese</b><span>Diccionario español–japonés</span></a></li>
-      <li><a href="https://apps.apple.com/us/app/japanese-colors-game/id6449403716" target="_blank" rel="noopener"><b>Japanese Colors Game</b><span>Simón dice, en japonés</span></a></li>
-      <li><a href="https://apps.apple.com/us/app/%E7%B0%A1%E5%8D%98%E3%82%B9%E3%83%9A%E3%82%A4%E3%83%B3%E8%AA%9E/id6751715793" target="_blank" rel="noopener"><b>簡単スペイン語</b><span>Español fácil para japoneses</span></a></li>
-      <li><a href="https://apps.apple.com/us/app/cosyroomai/id6757226612" target="_blank" rel="noopener"><b>CosyRoomAI</b><span>Rediseña tu cuarto con IA</span></a></li>
-      <li><a href="https://apps.apple.com/us/app/la-biblia-espa%C3%B1ol/id6480528032" target="_blank" rel="noopener"><b>La Biblia Español</b><span>La Biblia en tu bolsillo</span></a></li>
-      <li><a href="https://meshop.space" target="_blank" rel="noopener"><b>MeShop</b><span>Tu tienda en línea en minutos</span></a></li>
+      <li><a href="https://historiasenjapones.com" target="_blank" rel="noopener"><b>Historias en japonés</b><span data-i18n="prod.historias">Aprende japonés leyendo cuentos</span></a></li>
+      <li><a href="https://unihongo.com" target="_blank" rel="noopener"><b>Unihongo</b><span data-i18n="prod.unihongo">Japonés con Mocchi, tu tutor de IA</span></a></li>
+      <li><a href="https://apps.apple.com/us/app/kanjiguess/id6811568689" target="_blank" rel="noopener"><b>KanjiGuess</b><span data-i18n="prod.kanjiguess">Adivina el kanji del día</span></a></li>
+      <li><a href="https://apps.apple.com/us/app/the-hiraganas-king/id1637657106" target="_blank" rel="noopener"><b>The Hiraganas King</b><span data-i18n="prod.hiragana">Domina el hiragana jugando</span></a></li>
+      <li><a href="https://apps.apple.com/us/app/tamagowoulda-%E8%8B%B1%E8%AA%9E%E3%83%9A%E3%83%83%E3%83%88/id6814585506" target="_blank" rel="noopener"><b>Tamagowoulda</b><span data-i18n="prod.woulda">Mascota virtual para aprender inglés</span></a></li>
+      <li><a href="https://apps.apple.com/us/app/kotozute/id6807708667" target="_blank" rel="noopener"><b>Kotozute</b><span data-i18n="prod.kotozute">Mensajes lindos de tus amigos</span></a></li>
+      <li><a href="https://apps.apple.com/us/app/masternihongon5/id6737253015" target="_blank" rel="noopener"><b>MasterNihongoN5</b><span data-i18n="prod.n5">Prepárate para el JLPT N5</span></a></li>
+      <li><a href="https://apps.apple.com/us/app/dictionary-spanish-japanese/id1592032164" target="_blank" rel="noopener"><b>Dictionary Spanish Japanese</b><span data-i18n="prod.dicc">Diccionario español–japonés</span></a></li>
+      <li><a href="https://apps.apple.com/us/app/japanese-colors-game/id6449403716" target="_blank" rel="noopener"><b>Japanese Colors Game</b><span data-i18n="prod.colores">Simón dice, en japonés</span></a></li>
+      <li><a href="https://apps.apple.com/us/app/%E7%B0%A1%E5%8D%98%E3%82%B9%E3%83%9A%E3%82%A4%E3%83%B3%E8%AA%9E/id6751715793" target="_blank" rel="noopener"><b>簡単スペイン語</b><span data-i18n="prod.kantan">Español fácil para japoneses</span></a></li>
+      <li><a href="https://apps.apple.com/us/app/cosyroomai/id6757226612" target="_blank" rel="noopener"><b>CosyRoomAI</b><span data-i18n="prod.cosy">Rediseña tu cuarto con IA</span></a></li>
+      <li><a href="https://apps.apple.com/us/app/la-biblia-espa%C3%B1ol/id6480528032" target="_blank" rel="noopener"><b>La Biblia Español</b><span data-i18n="prod.biblia">La Biblia en tu bolsillo</span></a></li>
+      <li><a href="https://meshop.space" target="_blank" rel="noopener"><b>MeShop</b><span data-i18n="prod.meshop">Tu tienda en línea en minutos</span></a></li>
     </ul>
-    <a class="todas" href="https://apps.apple.com/us/developer/victor-lagunas/id1592032166" target="_blank" rel="noopener">Ver todas mis apps en App Store ›</a>
-    <p class="nota">Hecho en Japón con nostalgia mexicana · 2026<br>Usa Three.js, cannon-es y PeerJS</p>
-    <button class="principal" id="credCerrar" type="button">Cerrar</button>
+    <a class="todas" href="https://apps.apple.com/us/developer/victor-lagunas/id1592032166" target="_blank" rel="noopener" data-i18n="cred.todas">See all my apps on the App Store ›</a>
+    <p class="nota"><span data-i18n="cred.nota">Made in Japan with Mexican nostalgia · 2026</span><br><span data-i18n="cred.usa">Built with Three.js, cannon-es and PeerJS</span></p>
+    <button class="principal" id="credCerrar" type="button" data-i18n="cred.cerrar">Close</button>
   </div>
 </section>
 

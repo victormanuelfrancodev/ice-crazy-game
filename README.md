@@ -57,7 +57,17 @@ En el repo, ve a **Settings → Pages → Build and deployment**, elige **Deploy
 
 ## Créditos
 
-- **Idea y dirección**: Victor Manuel Franco
-- **Programación y modelos 3D**: Victor Manuel Franco con Claude (Anthropic)
-- **Tecnología**: [Three.js](https://threejs.org), [cannon-es](https://github.com/pmndrs/cannon-es), [PeerJS](https://peerjs.com)
-- **Tipografías**: Fredoka y Nunito Sans (Google Fonts)
+Hecho por **Victor Manuel Franco** · [YouTube: Un dev Mexicano en Japón](https://www.youtube.com/@vicktorManuel)
+
+### Mis otros productos
+
+- [Historias en japonés](https://historiasenjapones.com): aprende japonés leyendo cuentos
+- [Unihongo](https://unihongo.com): japonés con Mocchi, tu tutor de IA
+- [KanjiGuess](https://apps.apple.com/us/app/kanjiguess/id6811568689)
+- [The Hiraganas King](https://apps.apple.com/us/app/the-hiraganas-king/id1637657106)
+- [Tamagowoulda](https://apps.apple.com/us/app/tamagowoulda-%E8%8B%B1%E8%AA%9E%E3%83%9A%E3%83%83%E3%83%88/id6814585506)
+- [Kotozute](https://apps.apple.com/us/app/kotozute/id6807708667)
+- [MeShop](https://meshop.space)
+- [Todas mis apps en App Store](https://apps.apple.com/us/developer/victor-lagunas/id1592032166)
+
+Usa [Three.js](https://threejs.org), [cannon-es](https://github.com/pmndrs/cannon-es) y [PeerJS](https://peerjs.com).

@@ -114,8 +114,28 @@ input {
 #codigo { text-transform: uppercase; letter-spacing: .3em; font-family: var(--display); font-size: 20px; text-align: center; }
 
 /* ---- sala ---- */
-#sala { justify-content: center; }
-.sala { width: min(480px, 100%); }
+#sala { justify-content: flex-end; }
+#sala .sala { width: min(480px, 100%); max-height: 56vh; }
+#sala .escenarios { grid-template-columns: 1fr 1fr; }
+/* en compu el panel va a la derecha (debajo del selector de idioma) y la fila de cubitos queda a la vista */
+@media (min-width: 900px) {
+  #sala { align-items: flex-end; justify-content: center; padding-top: calc(var(--arriba) + 52px); }
+  #sala .sala { width: min(500px, 44vw); max-height: 100%; }
+}
+.estado-sala { display: grid; gap: 3px; text-align: center; padding: 12px; border-radius: 16px; background: rgba(47, 155, 255, .1); border: 1px solid rgba(47, 155, 255, .25); }
+.estado-sala b { font: 700 19px/1.15 var(--display); }
+.estado-sala span { font-size: 13px; color: var(--tinta-suave); }
+.estado-sala span:empty { display: none; }
+.estado-sala.solo b::after { content: ""; display: inline-block; width: 1.2em; text-align: left; animation: puntos 1.4s steps(4) infinite; }
+@keyframes puntos { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+.estado-sala.cuenta { background: rgba(31, 181, 122, .14); border-color: rgba(31, 181, 122, .4); }
+.estado-sala.cuenta b { color: #128a5c; font-size: 22px; }
+.listo-btn { font-size: 17px; padding: 13px; }
+.jugadores li.listo { border-color: rgba(31, 181, 122, .45); }
+.chip-listo { font: 700 10px/1 var(--body); letter-spacing: .06em; text-transform: uppercase; padding: 5px 7px; border-radius: 6px; background: rgba(27, 42, 74, .07); color: var(--tinta-suave); white-space: nowrap; }
+.jugadores li.listo .chip-listo { background: #1fb57a; color: #fff; }
+.jugadores .mini { padding: 4px 8px; font-size: 15px; border-radius: 8px; }
+#espectador { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--abajo) + 4px); padding: 9px 16px; border-radius: 99px; font: 600 14px/1.2 var(--display); text-align: center; width: max-content; max-width: calc(100% - 32px); z-index: 4; }
 .sala-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
 .codigo { font: 700 44px/1 var(--display); letter-spacing: .14em; font-variant-numeric: tabular-nums; }
 .enlace { margin: 0; font-size: 12px; color: var(--tinta-suave); overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; }
@@ -197,4 +217,5 @@ body[data-escenario="neon"] { background: #0b0d26; }
 body[data-escenario="neon"] .lema, body[data-escenario="neon"] .pie, body[data-escenario="neon"] .centro h3, body[data-escenario="neon"] .centro p { color: #e8ecff; text-shadow: 0 1px 8px #000; }
 body[data-escenario="neon"] #toast { color: #fff; text-shadow: 0 0 12px #ff3dbb, 0 2px 0 #000; }
 body[data-escenario="neon"] #toast small { color: #cfd6ff; }
+@media (max-width: 420px) { .jugadores li { flex-wrap: wrap; } .jugadores .quien { flex-basis: calc(100% - 30px); } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

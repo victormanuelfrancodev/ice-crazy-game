@@ -83,14 +83,19 @@
   <div class="panel vidrio sala">
     <div class="sala-cab">
       <div>
-        <small data-i18n="sala.codigo">Room code</small>
+        <small data-i18n="sala.titulo">Waiting room</small>
         <div class="codigo" id="salaCodigo">-----</div>
       </div>
       <button id="btnCopiar" type="button" data-i18n="sala.copiar">Copy link</button>
     </div>
     <p class="enlace" id="salaEnlace"></p>
-    <div class="fila-etq"><span><span data-i18n="etq.jugadores">Players</span> <b id="salaCuenta">1/12</b></span></div>
+    <div class="estado-sala" id="salaEstado" role="status" aria-live="polite">
+      <b id="salaEstadoTit">Waiting for players</b>
+      <span id="salaEstadoSub"></span>
+    </div>
+    <div class="fila-etq"><span data-i18n="etq.jugadores">Players</span><b id="salaCuenta"></b></div>
     <ul class="jugadores" id="salaLista"></ul>
+    <button class="ancho listo-btn" id="btnListo" type="button" aria-pressed="false">I'm ready</button>
     <div id="salaHost">
       <div class="fila-etq"><span data-i18n="etq.escenario">Arena</span></div>
       <div class="escenarios" id="escSala"></div>
@@ -107,6 +112,7 @@
 </section>
 
 <!-- ============ JUEGO ============ -->
+<div id="espectador" class="vidrio" hidden role="status" data-i18n="esp.banner">You're watching · you'll play in the next match</div>
 <div id="hud" hidden>
   <div class="centro"><h3 id="hudModo">Clásico</h3><p id="hudRonda"></p></div>
   <ul class="chips" id="chips"></ul>

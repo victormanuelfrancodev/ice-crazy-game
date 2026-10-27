@@ -11,6 +11,9 @@ export function nuevoCodigo() {
 }
 export const limpiarCodigo = c => (c || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5);
 
+// opciones de PeerJS; las pruebas locales pueden apuntar a otro servidor con window.ICECRAZY_PEER
+const opcionesPeer = () => ({ debug: 0, ...(window.ICECRAZY_PEER || {}) });
+
 function hayPeer() {
   if (typeof window.Peer !== "function") throw new Error("red.noLib");
 }
@@ -24,7 +27,7 @@ export class Anfitrion {
     hayPeer();
     return new Promise((resolve, reject) => {
       const codigo = nuevoCodigo();
-      const peer = new window.Peer(PREFIJO + codigo, { debug: 0 });
+      const peer = new window.Peer(PREFIJO + codigo, opcionesPeer());
       peer.on("open", () => { this.peer = peer; this.codigo = codigo; this.id = peer.id; resolve(codigo); });
       peer.on("error", err => {
         if (err.type === "unavailable-id" && intentos > 0) { peer.destroy(); this.abrir(intentos - 1).then(resolve, reject); }
@@ -59,7 +62,7 @@ export class Invitado {
   unirse(codigo, saludo) {
     hayPeer();
     return new Promise((resolve, reject) => {
-      const peer = new window.Peer({ debug: 0 });
+      const peer = new window.Peer(opcionesPeer());
       let listo = false;
       const t = setTimeout(() => { if (!listo) { peer.destroy(); reject(new Error("red.noSala")); } }, 12000);
       peer.on("open", id => {

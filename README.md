@@ -22,9 +22,16 @@ Juego 3D de lanzar figuritas de hielo, inspirado en los juegos de lanzar figurit
 
 ## Jugar en red
 
-- Uno toca **En red → Crear sala** y comparte el código de 5 letras o el enlace.
-- Los demás eligen su cubito, escriben el código y tocan **Unirse**.
-- El anfitrión elige el juego, puede agregar jugadores CPU y empieza la partida.
+Se juega desde **2 hasta 12 jugadores**.
+
+1. Uno toca **En red → Crear sala** y comparte el código de 5 letras o el enlace.
+2. Los demás eligen su cubito, escriben el código y tocan **Unirse**.
+3. Todos llegan a la **sala de espera**:
+   - Cada quien aparece como su cubito en 3D, con su nombre encima.
+   - Cada jugador puede cambiar de cubito y tocar **Estoy listo**.
+   - Cuando todos están listos empieza una cuenta regresiva de 5 segundos. El anfitrión también puede tocar **Empezar ya** si hay 2 o más jugadores.
+   - El anfitrión elige el escenario y el juego, y puede agregar jugadores CPU.
+4. Si alguien entra con la partida ya empezada, se queda mirando y juega en la siguiente.
 
 La conexión es directa entre navegadores (WebRTC con PeerJS). El anfitrión simula la física y reparte el estado a todos. En algunas redes muy cerradas, como las de oficinas o algunos datos móviles, la conexión directa puede fallar.
 

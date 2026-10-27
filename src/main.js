@@ -8,6 +8,7 @@ import { PJS, crearCubito, BASE } from "./personajes.js";
 import { Anfitrion, Invitado, limpiarCodigo } from "./red.js";
 import { ESCENARIOS, texturaDe } from "./escenarios.js";
 import { t, tr, ponerIdioma, idioma, IDIOMAS, traducirPagina } from "./i18n.js";
+import { TAB, HOYOS, HOYO_R, SALIDA_Z, puntoTablero, enTablero, premioDe, apuntarHoyo, crearCuerpos, crearTablero, animarTablero, encenderHoyo, pintarLetrero } from "./canicas.js";
 
 const $ = id => document.getElementById(id);
 const canvas = $("escena");
@@ -19,9 +20,14 @@ const MODOS = {
   clasico: { tiros: 5 },
   bombardero: { tiros: 4 },
   linea: { tiros: 3 },
+  canicas: { tiros: 5 },
 };
 const nombreModo = k => t("modo." + k);
 const nombreEsc = k => t("esc." + k);
+// en Canicas solo ruedan las figuras redondas; quien no tenga una juega con Coco o Uva
+const REDONDOS = PJS.map((p, i) => (p.forma === "bola" ? i : -1)).filter(i => i >= 0);
+const esRedondo = i => PJS[i]?.forma === "bola";
+const pjDeJuego = (j, idx) => (S.modo === "canicas" && !esRedondo(j.pj) ? REDONDOS[idx % REDONDOS.length] : j.pj);
 const descPj = i => t("forma." + (PJS[i].forma || "cubo")) + " · " + t("acc." + PJS[i].accesorio);
 
 // ================= RENDER =================
@@ -163,6 +169,19 @@ function aplicarEscenario(clave) {
   document.querySelectorAll(".escenarios button").forEach(b => b.classList.toggle("activo", b.dataset.esc === S.escenario));
   try { localStorage.setItem("icecrazy-escenario", S.escenario); } catch {}
 }
+// ================= TABLERO DE CANICAS =================
+const tableroCanicas = crearTablero();
+tableroCanicas.visible = false;
+scene.add(tableroCanicas);
+marcas.canicas = tableroCanicas;
+const cuerposTablero = crearCuerpos(matPiso);
+function fisicaTablero(activa) {
+  for (const b of cuerposTablero) {
+    if (activa && !b.world) world.addBody(b);
+    if (!activa && b.world) world.removeBody(b);
+  }
+}
+
 const frenado = () => (ESCENARIOS[S.escenario]?.friccion ?? 0.32) * GRAV;
 
 // ================= PIEZAS =================
@@ -183,7 +202,7 @@ function crearPieza(id, pj, dueno, x, y, z) {
   body.position.set(x, y ?? he.y + 0.02, z);
   if (autoridad()) world.addBody(body);
   envoltura.position.copy(body.position);
-  const p = { id, pj, dueno, envoltura, body, he, marcador: null, anillo: null, objetivo: null };
+  const p = { id, pj, dueno, envoltura, body, he, radio: F.f === "bola" ? (alto / 2) * ESC : he.y, marcador: null, anillo: null, objetivo: null, hoyo: null };
   piezas.set(id, p);
   return p;
 }
@@ -357,6 +376,11 @@ function animarFilaSala(dt, t) {
 
 // ================= PANTALLAS =================
 const PANTALLAS = ["presentacion", "elegir", "sala", "fin", "creditos"];
+// la línea de salida: en Canicas va más cerca del tablero
+function ponerSalida() {
+  SALIDA.z = S.modo === "canicas" ? SALIDA_Z : 7.6;
+  salida.position.z = SALIDA.z - 0.5;
+}
 function ir(p) {
   S.pantalla = p;
   for (const id of PANTALLAS) $(id).hidden = id !== p;
@@ -371,7 +395,13 @@ function ir(p) {
   salida.visible = enJuego;
   for (const k in marcas) marcas[k].visible = enJuego && k === S.modo;
   paredes.visible = enJuego;
-  if (enJuego) { camPos.set(0, 6.4, 15); camMira.set(0, 0.3, -2); }
+  if (enJuego) {
+    ponerSalida();
+    const canicas = S.modo === "canicas";
+    if (canicas) { camPos.set(0, 6.6, 11.6); camMira.set(0, 0.4, -5); } else { camPos.set(0, 6.4, 15); camMira.set(0, 0.3, -2); }
+    // sin tanta niebla, para que el tablero se vea con sus colores
+    scene.fog.near = canicas ? 34 : 22; scene.fog.far = canicas ? 80 : 48;
+  }
   else { camaraMenu(); limpiarPiezas(); ocultarPrevia(); }
 }
 
@@ -764,6 +794,10 @@ function aplicar(msg) {
       S.espectador = !!msg.espectador || !msg.jugadores.some(j => j.id === S.miId);
       if (msg.escenario) aplicarEscenario(msg.escenario);
       if (!autoridad()) limpiarPiezas();
+      if (S.modo === "canicas") {
+        const yo = S.jugadores.findIndex(j => j.id === S.miId);
+        if (yo >= 0 && !esRedondo(S.jugadores[yo].pj)) setTimeout(() => aviso(t("av.soloRedondas", { n: PJS[pjDeJuego(S.jugadores[yo], yo)].nombre })), 300);
+      }
       ir("juego");
       $("hudModo").textContent = nombreModo(S.modo);
       S.elev = S.modo === "linea" ? "rastrero" : "medio";
@@ -781,6 +815,7 @@ function aplicar(msg) {
     case "cercano": marcarAnillo(msg.id); break;
     case "sacar": sacarPieza(msg.id, msg.hacia); break;
     case "fin": mostrarFin(msg); break;
+    case "hoyo": encenderHoyo(tableroCanicas, msg.i, msg.c); sonido("hoyo"); break;
   }
 }
 
@@ -803,10 +838,10 @@ function renderHud() {
   const total = MODOS[S.modo].tiros;
   if (j && S.fase !== "fin") $("hudRonda").textContent = t("hud.ronda", { n: j.nombre, k: Math.min(total, j.tiros + 1), t: total });
   const mio = esMiTurno();
-  $("tipoTiro").hidden = !(mio && S.modo !== "clasico");
+  $("tipoTiro").hidden = !(mio && S.modo !== "clasico" && S.modo !== "canicas");
   $("ayuda").hidden = !mio;
   if (mio) {
-    $("ayuda").textContent = S.modo === "clasico" ? t("ayuda.clasico") : t("ayuda.otros");
+    $("ayuda").textContent = S.modo === "clasico" ? t("ayuda.clasico") : S.modo === "canicas" ? t("ayuda.canicas") : t("ayuda.otros");
     const clave = S.turno + ":" + j.tiros;
     if (clave !== ultimoTurnoAvisado && S.jugadores.filter(q => !q.cpu).length > 1) { ultimoTurnoAvisado = clave; aviso(t("av.teToca")); sonido("bien"); }
   }
@@ -821,6 +856,8 @@ function iniciarPartida() {
   S.cpuAjuste = {};
   for (const j of S.jugadores) { j.pts = 0; j.tiros = 0; }
   S.turno = 0;
+  fisicaTablero(S.modo === "canicas");
+  ponerSalida();
   emitir({ t: "inicio", modo: S.modo, jugadores: S.jugadores, escenario: S.escenario });
   if (S.modo === "bombardero") {
     const n = Math.min(16, 6 + 2 * S.jugadores.length);
@@ -840,7 +877,7 @@ function nuevoTurno() {
   S.tEspera = 0;
   S.xSalida = 0;
   S.apunta = null;
-  const p = crearPieza(sigId++, j.pj, S.turno, SALIDA.x, null, SALIDA.z);
+  const p = crearPieza(sigId++, pjDeJuego(j, S.turno), S.turno, SALIDA.x, null, SALIDA.z);
   p.body.type = CANNON.Body.KINEMATIC;
   p.body.updateMassProperties();
   S.lanzadaId = p.id;
@@ -856,9 +893,15 @@ const CFG = {
   clasico: { vmin: 8, vmax: 15.5, lat: 6 },
   bombardero: { vmin: 6, vmax: 20, lat: 12 },
   linea: { vmin: 4, vmax: 20.5, lat: 12 },
+  canicas: { vmin: 4, vmax: 12 },
 };
 // velocidad inicial y efecto lateral de un tiro
 function calcTiro(t) {
+  if (S.modo === "canicas") {
+    // rueda en línea recta: sin altura y sin efecto
+    const v = CFG.canicas.vmin + (CFG.canicas.vmax - CFG.canicas.vmin) * t.f;
+    return { vel: new THREE.Vector3(Math.sin(t.ang) * v, 0, -Math.cos(t.ang) * v), aLat: 0 };
+  }
   const c = CFG[S.modo];
   const e = S.modo === "clasico" ? THREE.MathUtils.degToRad(72) : ELEV[t.elev];
   const v = c.vmin + (c.vmax - c.vmin) * t.f;
@@ -876,10 +919,16 @@ function lanzar(tiro) {
   b.mass = 1; b.updateMassProperties();
   b.wakeUp();
   b.position.x = S.xSalida;
-  b.position.y += 0.3;
   b.velocity.set(vel.x, vel.y, vel.z);
-  const giro = S.modo === "clasico" ? 8 + 14 * tiro.f : 2.5;
-  b.angularVelocity.set((Math.random() - 0.5) * giro * 2, -tiro.curva * 9 + (Math.random() - 0.5) * giro, (Math.random() - 0.5) * giro * 2);
+  if (S.modo === "canicas") {
+    // la canica sale rodando desde el piso
+    b.position.y = p.radio + 0.02;
+    b.angularVelocity.set(vel.z / p.radio, 0, -vel.x / p.radio);
+  } else {
+    b.position.y += 0.3;
+    const giro = S.modo === "clasico" ? 8 + 14 * tiro.f : 2.5;
+    b.angularVelocity.set((Math.random() - 0.5) * giro * 2, -tiro.curva * 9 + (Math.random() - 0.5) * giro, (Math.random() - 0.5) * giro * 2);
+  }
   p.aLat = aLat; p.tCurva = 0;
   S.fase = "volando";
   S.tEspera = 0;
@@ -888,6 +937,42 @@ function lanzar(tiro) {
   emitir({ t: "son", q: "lanzar" });
 }
 
+// el borde del hoyo jala un poquito la canica hacia adentro
+world.addEventListener("preStep", () => {
+  if (S.modo !== "canicas") return;
+  const p = piezas.get(S.lanzadaId);
+  if (!p || p.hoyo != null || p.body.type !== CANNON.Body.DYNAMIC) return;
+  const b = p.body, e = enTablero(b.position);
+  if (e.u < 0 || e.u > TAB.L || e.h > p.radio + 0.25) return;
+  for (const h of HOYOS) {
+    const dx = h.x - e.x, du = h.u - e.u, d = Math.hypot(dx, du);
+    if (d < HOYO_R * 1.3 && d > 0.001 && b.velocity.length() < 3.5) {
+      const k = 8 * (1 - d / (HOYO_R * 1.3)) * b.mass / d;
+      b.applyForce(new CANNON.Vec3(dx * k, du * TAB.dir.y * k, du * TAB.dir.z * k), b.position);
+    }
+  }
+});
+// si la canica pasa lenta sobre un hoyo, cae. Rodando cuesta arriba frena unos 3.3 m/s², así que
+// rumbo a la última fila todavía cruza la primera a ~4.6 m/s y no cae: solo cae cerca de donde se detiene
+// (o de regreso, si se pasó un poco)
+function revisarHoyos() {
+  const p = piezas.get(S.lanzadaId);
+  if (!p || p.hoyo != null || p.body.type !== CANNON.Body.DYNAMIC) return;
+  const b = p.body, e = enTablero(b.position);
+  if (e.u < 0 || e.u > TAB.L || e.h > p.radio + 0.25) return;
+  const vel = b.velocity.length();
+  HOYOS.forEach((h, i) => {
+    if (p.hoyo != null) return;
+    if (Math.hypot(h.x - e.x, h.u - e.u) < HOYO_R * 0.62 && vel < 2.2) {
+      p.hoyo = i;
+      b.velocity.setZero(); b.angularVelocity.setZero();
+      b.type = CANNON.Body.STATIC; b.mass = 0; b.updateMassProperties();
+      const c = puntoTablero(h.x, h.u, p.radio * 0.45);
+      b.position.set(c.x, c.y, c.z);
+      emitir({ t: "hoyo", i, c: jugadorTurno()?.color ?? "#ffffff" });
+    }
+  });
+}
 world.addEventListener("preStep", () => {
   const p = piezas.get(S.lanzadaId);
   if (!p || !p.aLat || p.body.type !== CANNON.Body.DYNAMIC) return;
@@ -916,6 +1001,12 @@ function evaluar() {
     j.pts += r.pts;
     emitir({ t: "aviso", a: [r.k], b: ["av.mas", { n: j.nombre, p: fmt(r.pts) }], s: r.pts >= 5 ? "bien" : r.pts > 0 ? "tic" : "mal" });
     emitir({ t: "etiqueta", id: p.id, texto: [r.k] });
+  } else if (S.modo === "canicas") {
+    if (p.hoyo != null) {
+      const v = HOYOS[p.hoyo].valor;
+      j.pts += v;
+      emitir({ t: "aviso", a: ["av.hoyo", { n: v }], b: ["av.mas", { n: j.nombre, p: v }], s: v >= 8 ? "bien" : "tic" });
+    } else emitir({ t: "aviso", a: ["av.fuera"], b: j.nombre, s: "mal" });
   } else if (S.modo === "bombardero") {
     let sacados = 0;
     for (const q of [...piezas.values()]) {
@@ -949,7 +1040,7 @@ function siguiente() {
   const j = jugadorTurno();
   j.tiros++;
   const id = S.lanzadaId;
-  if (S.modo !== "linea") setTimeout(() => quitarPieza(id), S.modo === "clasico" ? 1100 : 300);
+  if (S.modo !== "linea") setTimeout(() => quitarPieza(id), S.modo === "clasico" ? 1100 : S.modo === "canicas" ? 900 : 300);
   const total = MODOS[S.modo].tiros;
   const activos = S.jugadores.filter(q => !q.fuera);
   const quedanFichas = [...piezas.values()].some(q => q.dueno === -1);
@@ -976,8 +1067,9 @@ function terminar() {
     const { mejor, dm } = puntuarLinea();
     detalle = mejor ? ["fin.detLinea", { cm: (dm * 20).toFixed(0) }] : ["fin.detNadie"];
   } else if (S.modo === "bombardero") detalle = ["fin.detBomb"];
+  else if (S.modo === "canicas") detalle = ["fin.detCanicas"];
   else detalle = ["fin.detClasico"];
-  const ranking = S.jugadores.map(j => ({ nombre: j.nombre, pts: j.pts, color: j.color, id: j.id, fuera: j.fuera })).sort((a, b) => b.pts - a.pts);
+  const ranking = S.jugadores.map(j => ({ nombre: j.nombre, pts: j.pts, color: j.color, id: j.id, fuera: j.fuera, pr: S.modo === "canicas" ? premioDe(j.pts) : null })).sort((a, b) => b.pts - a.pts);
   emitir({ t: "fin", ranking, detalle });
 }
 
@@ -995,7 +1087,9 @@ function mostrarFin(msg, sonar = true) {
     const li = document.createElement("li");
     li.append(Object.assign(document.createElement("span"), { className: "pos", textContent: i + 1 }));
     const p = document.createElement("span"); p.className = "punto"; p.style.background = j.color; li.append(p);
-    li.append(Object.assign(document.createElement("span"), { className: "nom", textContent: j.nombre + (j.id === S.miId ? t("fin.tu") : "") + (j.fuera ? t("fin.salio") : "") }));
+    const nom = Object.assign(document.createElement("span"), { className: "nom", textContent: j.nombre + (j.id === S.miId ? t("fin.tu") : "") + (j.fuera ? t("fin.salio") : "") });
+    if (j.pr) nom.append(Object.assign(document.createElement("small"), { className: "premio", textContent: t(j.pr) }));
+    li.append(nom);
     li.append(Object.assign(document.createElement("b"), { textContent: fmt(j.pts) }));
     ol.append(li);
   });
@@ -1030,6 +1124,14 @@ function turnoCpu() {
     tiro.ang = (Math.random() - 0.5) * 0.5;
     tiro.f = 0.3 + Math.random() * 0.7;
     tiro.curva = (Math.random() - 0.5) * 1.2;
+  } else if (S.modo === "canicas") {
+    // escoge un hoyo (a veces se arriesga por los que valen más) y calcula la fuerza para llegar
+    const orden = [...HOYOS.keys()].sort(() => Math.random() - 0.5);
+    const h = HOYOS[Math.random() < 0.4 ? HOYOS.reduce((m, x, i) => (x.valor * (0.6 + Math.random()) > HOYOS[m].valor ? i : m), orden[0]) : orden[0]];
+    const a = apuntarHoyo(HOYOS.indexOf(h), xs);
+    tiro.ang = a.ang + (Math.random() - 0.5) * 0.05;
+    const v = a.v + (Math.random() - 0.5) * 0.7;
+    tiro.f = THREE.MathUtils.clamp((v - CFG.canicas.vmin) / (CFG.canicas.vmax - CFG.canicas.vmin), 0.05, 1);
   } else if (S.modo === "bombardero") {
     const fichas = [...piezas.values()].filter(q => q.dueno === -1);
     const t = fichas[Math.floor(Math.random() * fichas.length)]?.body.position ?? { x: 0, z: -3 };
@@ -1132,6 +1234,25 @@ function ocultarPrevia() { puntos.visible = false; aterriza.visible = false; }
 function previsualizar(tiro, color) {
   const p = piezas.get(S.lanzadaId);
   if (!p || !tiro) return;
+  if (S.modo === "canicas") {
+    // solo la dirección: una línea recta que crece con la fuerza
+    const largo = 2.5 + tiro.f * 7, base = new THREE.Color(color);
+    let n = 0;
+    for (let d = 0.6; d < largo && n < N_PUNTOS; d += 0.35) {
+      const x = S.xSalida + Math.sin(tiro.ang) * d, z = SALIDA.z - Math.cos(tiro.ang) * d;
+      const y = z < TAB.z0 ? (TAB.z0 - z) * Math.tan(TAB.ang) + 0.08 : 0.08;
+      _m.makeTranslation(x, y, z);
+      puntos.setMatrixAt(n, _m);
+      puntos.setColorAt(n, base);
+      n++;
+    }
+    puntos.count = n;
+    puntos.instanceMatrix.needsUpdate = true;
+    if (puntos.instanceColor) puntos.instanceColor.needsUpdate = true;
+    puntos.visible = true;
+    aterriza.visible = false;
+    return;
+  }
   const { vel, aLat } = calcTiro(tiro);
   const pos = new THREE.Vector3(S.xSalida, p.he.y + 0.3, SALIDA.z);
   const v = vel.clone();
@@ -1218,7 +1339,7 @@ canvas.addEventListener("pointermove", e => {
     curva = THREE.MathUtils.clamp((dev / largo) * 3, -1, 1);
     if (Math.abs(curva) < 0.08) curva = 0;
   }
-  arrastre.tiro = { ang, f, curva, elev: S.elev };
+  arrastre.tiro = { ang, f, curva: S.modo === "canicas" ? 0 : curva, elev: S.elev };
   S.apunta = f > 0.04 ? arrastre.tiro : null;
   if (S.apunta) previsualizar(arrastre.tiro, miColor()); else ocultarPrevia();
   const ahora = performance.now();
@@ -1276,6 +1397,7 @@ function sonido(q) {
   if (q === "lanzar") tono(300, 0.18, "triangle", 0.08, 400);
   if (q === "bien") { tono(660, 0.1, "triangle"); setTimeout(() => tono(990, 0.18, "triangle"), 80); }
   if (q === "mal") tono(260, 0.3, "sine", 0.09, -120);
+  if (q === "hoyo") { tono(520, 0.06, "square", 0.05); setTimeout(() => tono(390, 0.12, "triangle", 0.08), 60); }
 }
 
 // ================= BUCLE =================
@@ -1328,10 +1450,12 @@ function bucle() {
   }
 
   if (S.pantalla === "sala") animarFilaSala(dt, t);
+  if (tableroCanicas.visible) animarTablero(tableroCanicas, dt, t);
 
   if (enJuego) {
     if (autoridad()) {
       world.step(1 / 60, dt, 4);
+      if (S.modo === "canicas" && S.fase === "volando") revisarHoyos();
       const p = piezas.get(S.lanzadaId);
       if (p && p.body.type === CANNON.Body.KINEMATIC) {
         const b = p.body;
@@ -1346,7 +1470,11 @@ function bucle() {
         if (S.fase === "cpu") { S.tEspera += dt; if (S.tEspera > 0.9) { S.fase = "cpuApunta"; turnoCpu(); } }
         if (S.fase === "volando") {
           S.tEspera += dt;
-          if ((S.tEspera > 0.6 && todoQuieto()) || S.tEspera > 7) {
+          const lp0 = piezas.get(S.lanzadaId);
+          // en Canicas el tiro termina al caer en un hoyo o cuando la canica regresa por la rampa
+          const canicaLista = S.modo === "canicas" && lp0 && (lp0.hoyo != null ? S.tEspera > 0.8
+            : S.tEspera > 1 && lp0.body.position.z > TAB.z0 + 0.5 && lp0.body.velocity.z > 0.3);
+          if (canicaLista || (S.tEspera > 0.6 && todoQuieto()) || S.tEspera > 7) {
             S.fase = "evaluando";
             const j = jugadorTurno(), lp = piezas.get(S.lanzadaId);
             if (S.modo === "linea" && j.cpu && lp) S.cpuAjuste[j.id] = (S.cpuAjuste[j.id] || 0) + (lp.body.position.z - LINEA_Z) * 0.7;
@@ -1404,6 +1532,7 @@ try {
 // ---------- idioma ----------
 function cambiarIdioma(l) {
   ponerIdioma(l);
+  pintarLetrero(t("canicas.letrero"));
   try { localStorage.setItem("icecrazy-idioma", idioma()); } catch {}
   traducirPagina();
   document.querySelectorAll("#idioma button").forEach(b => b.classList.toggle("activo", b.dataset.l === idioma()));
@@ -1443,5 +1572,11 @@ if (salaUrl.length === 5) {
   aviso(t("av.invitado"), t("av.invitadoSub"));
 }
 // solo en pruebas locales: expone el estado para revisarlo
-if (window.ICECRAZY_PEER) window.__ice = { S, red: () => red, dibujar: () => renderer.render(scene, camera) };
+if (window.ICECRAZY_PEER) window.__ice = {
+  S, red: () => red, dibujar: () => renderer.render(scene, camera),
+  tirar: tiro => { if (esMiTurno()) { S.xSalida = tiro.xs ?? 0; lanzar({ curva: 0, elev: "medio", ...tiro }); } },
+  pieza: () => { const p = piezas.get(S.lanzadaId); return p && { hoyo: p.hoyo, pj: p.pj, x: p.body.position.x, y: p.body.position.y, z: p.body.position.z }; },
+  apuntaA: (i, xs = 0) => { const a = apuntarHoyo(i, xs); return { ang: a.ang, xs, f: (a.v - CFG.canicas.vmin) / (CFG.canicas.vmax - CFG.canicas.vmin), valor: a.valor }; },
+  camara: (pos, mira) => { camera.position.set(...pos); camera.lookAt(...mira); },
+};
 bucle();

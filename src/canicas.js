@@ -11,14 +11,15 @@ export const TAB = {
   n: new THREE.Vector3(0, Math.cos(ANG), Math.sin(ANG)),      // normal de la superficie
 };
 export const HOYO_R = 0.58;
-// tres filas de cinco; los que valen más están más arriba
+// tres filas; los que valen más están más arriba. La fila de en medio va escalonada,
+// como en los tableros de feria, para que haya pasillos hacia los hoyos del fondo
 const FILAS = [
-  { u: 4.6, valores: [3, 1, 5, 1, 3] },
-  { u: 6.2, valores: [5, 10, 2, 10, 5] },
-  { u: 7.8, valores: [8, 4, 20, 4, 8] },
+  { u: 4.6, xs: [-3.2, -1.6, 0, 1.6, 3.2], valores: [3, 1, 5, 1, 3] },
+  { u: 6.2, xs: [-2.4, -0.8, 0.8, 2.4], valores: [5, 10, 10, 5] },
+  { u: 7.8, xs: [-3.2, -1.6, 0, 1.6, 3.2], valores: [8, 4, 20, 4, 8] },
 ];
 export const HOYOS = [];
-for (const f of FILAS) f.valores.forEach((v, k) => HOYOS.push({ u: f.u, x: (k - 2) * 1.6, valor: v }));
+for (const f of FILAS) f.valores.forEach((v, k) => HOYOS.push({ u: f.u, x: f.xs[k], valor: v }));
 
 // punto de la superficie a una distancia u de la orilla de abajo
 export function puntoTablero(x, u, sobre = 0) {
@@ -36,33 +37,38 @@ export const premioDe = pts => PREMIOS.find(([min]) => pts >= min)[1];
 
 // en Canicas se lanza más cerca del tablero
 export const SALIDA_Z = 3.8;
-// velocidad que hace falta para llegar a cierta altura de la rampa (medido con la simulación: rampa de 12°, salida en SALIDA_Z)
-const ALCANCE = [[3.1, 6], [3.7, 6.5], [4.3, 7], [5.1, 7.5], [5.7, 8], [6.5, 8.5], [7.3, 9], [8.1, 9.5], [9.0, 10]];
-export function velocidadPara(u) {
-  if (u <= ALCANCE[0][0]) return ALCANCE[0][1];
-  for (let i = 1; i < ALCANCE.length; i++) {
-    const [u1, v1] = ALCANCE[i], [u0, v0] = ALCANCE[i - 1];
-    if (u <= u1) return v0 + ((u - u0) / (u1 - u0)) * (v1 - v0);
-  }
-  return ALCANCE.at(-1)[1];
-}
-
-// Cómo tirar para que la canica se detenga sobre un hoyo, saliendo desde x = xs.
-// Subiendo la rampa frena la parte del movimiento que va hacia arriba, pero la lateral no:
-// una canica en diagonal se abre de lado. Por eso se apunta un poco más cerrado.
+// el piso frena lo que rueda sobre él (como tierra), para que las canicas que regresan se queden en el camino
+export const FRENO_PISO = 3;
+// Modelo sencillo del recorrido (ajustado contra el motor de física): en el piso la canica frena parejo
+// y sigue derecho; en la rampa frena lo que va hacia arriba, pero lo de lado no, así que en diagonal se abre.
 const FRENO_RAMPA = (5 / 7) * 22 * Math.sin(ANG);   // esfera rodando: 5/7 · g · sen(ángulo)
+const FRENO_PISO_EF = 1.85, AMORT_EF = 0.2;           // medidos con la simulación
+// hasta dónde llega una canica: el punto más alto de su recorrido en la rampa
+export function cimaDe(xs, ang, v) {
+  let x = xs, u = -(SALIDA_Z - TAB.z0), vx = Math.sin(ang) * v, vu = Math.cos(ang) * v;
+  const dt = 1 / 120, am = Math.exp(-AMORT_EF * dt);
+  for (let k = 0; k < 2400; k++) {
+    if (u < 0) { const s = Math.hypot(vx, vu); if (s < 1e-6) break; const s2 = Math.max(0, s - FRENO_PISO_EF * dt) * am; vx *= s2 / s; vu *= s2 / s; }
+    else { vu = (vu - FRENO_RAMPA * dt) * am; vx *= am; if (vu <= 0) break; }
+    x += vx * dt; u += vu * dt;
+  }
+  return { x, u };
+}
+// cómo tirar desde x = xs para que la canica se detenga sobre el hoyo i
 export function apuntarHoyo(i, xs) {
   const h = HOYOS[i];
-  const vSube = velocidadPara(h.u);                  // velocidad hacia adelante que hace falta
-  const piso = SALIDA_Z - TAB.z0;                    // tramo plano antes de la rampa
-  const enRampa = Math.sqrt(2 * FRENO_RAMPA * h.u);  // velocidad al pisar la rampa
-  const tiempo = piso / (vSube * 0.94) + enRampa / FRENO_RAMPA;
-  // la amortiguación también frena lo lateral: medido, solo recorre ~2/3 de lo calculado
-  const vLado = ((h.x - xs) / tiempo) * 1.5;
-  return { ang: Math.atan2(vLado, vSube), v: Math.hypot(vSube, vLado), valor: h.valor };
+  let ang = Math.atan2(h.x - xs, SALIDA_Z - TAB.z0 + h.u), v = 9 + h.u * 0.45;
+  for (let k = 0; k < 40; k++) {
+    const c = cimaDe(xs, ang, v);
+    const eu = h.u - c.u, ex = h.x - c.x;
+    if (Math.abs(eu) < 0.01 && Math.abs(ex) < 0.01) break;
+    v += eu * 0.18;
+    ang += Math.atan2(ex, SALIDA_Z - TAB.z0 + h.u) * 0.8;
+  }
+  return { ang, v, valor: h.valor };
 }
 
-// ---------- física: rampa, barandales y pared del fondo ----------
+// ---------- física: rampa lisa, barandales y pared del fondo ----------
 export function crearCuerpos(material) {
   const cuerpos = [];
   const q = new CANNON.Quaternion(); q.setFromEuler(ANG, 0, 0);
@@ -77,6 +83,69 @@ export function crearCuerpos(material) {
   for (const s of [-1, 1]) caja(0.2, 1.0, L, puntoTablero(s * (W / 2 + 0.1), L / 2, 0.5));
   caja(W + 0.4, 1.6, 0.25, puntoTablero(0, L + 0.125, 0.8));
   return cuerpos;
+}
+
+// ---------- los hoyos ----------
+// Cada hoyo es un asiento: una canica lenta que pasa por un hoyo libre se asienta y un resorte la mantiene ahí.
+// Si otra la golpea fuerte y la saca del asiento, queda libre y sigue rodando (y puede caer en otro hoyo).
+// Las canicas que van rápido pasan de largo. Una canica por hoyo.
+const ENTRA_R = +(globalThis.ICE_ENTRA ?? 0.3), ENTRA_VEL = 2.2;     // qué tan cerca del centro y qué tan lenta para caer
+const BORDE_R = 0.75, BORDE_VEL = 3.5;     // el borde jala un poco a las lentas hacia adentro
+// el resorte sujeta la canica en su asiento; su freno solo actúa mientras se acomoda (va lenta), así un golpe sí la puede sacar
+const RESORTE = +(globalThis.ICE_RES ?? 22), AMORT = 9, AMORT_VEL = 1.2, SALE_D = +(globalThis.ICE_SALE ?? 0.4);
+// un golpe más fuerte que esto (velocidad de impacto) saca a una canica de su hoyo
+export const GOLPE_SACA = +(globalThis.ICE_GOLPE ?? 3);
+// se llama una vez por canica: escucha los choques para saber si la botaron
+export function prepararCanica(m) {
+  m.body.addEventListener("collide", e => {
+    if (m.hoyo == null || e.body.mass === 0) return;
+    if (Math.abs(e.contact.getImpactVelocityAlongNormal()) > GOLPE_SACA) m.golpe = true;
+  });
+}
+// al empezar cada tiro se olvidan los vetos
+export function nuevoTiroCanicas(canicas) { for (const m of canicas) m.veto = null; }
+// canicas: [{ body, radio, hoyo }]; ocupados: id de canica por hoyo (o null). Devuelve lo que pasó en este paso.
+export function pasoCanicas(canicas, ocupados) {
+  const eventos = [];
+  for (const m of canicas) {
+    const b = m.body;
+    if (b.mass === 0) continue;
+    if (m.hoyo != null) {
+      const h = HOYOS[m.hoyo], asiento = puntoTablero(h.x, h.u, m.radio);
+      const dx = b.position.x - asiento.x, dy = b.position.y - asiento.y, dz = b.position.z - asiento.z;
+      if (m.golpe || Math.hypot(dx, dy, dz) > SALE_D) {   // la botaron
+        m.golpe = false;
+        eventos.push({ tipo: "sale", i: m.hoyo, m });
+        m.veto = m.hoyo;                         // no puede volver a ese hoyo en lo que queda de este tiro
+        ocupados[m.hoyo] = null; m.hoyo = null;
+        continue;
+      }
+      const v = b.velocity, am = v.length() < AMORT_VEL ? AMORT : 0;
+      b.applyForce(new CANNON.Vec3((-RESORTE * dx - am * v.x) * b.mass, (-RESORTE * dy - am * v.y) * b.mass, (-RESORTE * dz - am * v.z) * b.mass));
+      b.angularVelocity.scale(0.9, b.angularVelocity);
+      continue;
+    }
+    const e = enTablero(b.position);
+    if (e.u < -0.5 || e.u > TAB.L || e.h > m.radio + 0.2) continue;
+    const vel = b.velocity.length();
+    if (vel > BORDE_VEL) continue;
+    for (let i = 0; i < HOYOS.length; i++) {
+      if (ocupados[i] != null || m.veto === i) continue;
+      const h = HOYOS[i], fx = h.x - e.x, fu = h.u - e.u, d = Math.hypot(fx, fu);
+      if (d < ENTRA_R && vel < ENTRA_VEL) {
+        m.hoyo = i; ocupados[i] = m.id ?? true;
+        b.velocity.scale(0.3, b.velocity);      // al caer en el hoyo pierde casi todo el impulso
+        eventos.push({ tipo: "entra", i, m });
+        break;
+      }
+      if (d < BORDE_R && d > 0.02) {
+        const k = 8 * (1 - d / BORDE_R) * b.mass / d;
+        b.applyForce(new CANNON.Vec3(fx * k, fu * TAB.dir.y * k, fu * TAB.dir.z * k));
+        break;
+      }
+    }
+  }
+  return eventos;
 }
 
 // ---------- dibujo ----------
@@ -186,6 +255,7 @@ export function crearTablero() {
     const m = new THREE.Mesh(new THREE.RingGeometry(HOYO_R * 0.9, HOYO_R * 1.35, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
     m.position.copy(puntoTablero(h.x, h.u, 0.02));
     m.rotation.x = ANG - Math.PI / 2;
+    m.userData = { on: false, pop: 0 };
     g.add(m);
     return m;
   });
@@ -218,17 +288,22 @@ export function crearTablero() {
 export function animarTablero(g, dt, t) {
   for (const b of g.userData.banderas) b.rotation.x = Math.sin(t * 2 + b.userData.fase) * 0.18;
   for (const l of g.userData.luces) {
-    if (l.userData.t > 0) {
-      l.userData.t -= dt;
-      const k = Math.max(0, l.userData.t / 1.6);
-      l.material.opacity = k;
-      l.scale.setScalar(1 + (1 - k) * 0.6);
-    }
+    const u = l.userData;
+    if (u.pop > 0) u.pop = Math.max(0, u.pop - dt);
+    // encendido: aro del color del dueño que late suave; al entrar o salir hace un destello
+    const objetivo = u.on ? 0.85 + Math.sin(t * 3 + l.id) * 0.1 : 0;
+    l.material.opacity += (Math.max(objetivo, u.pop / 0.6) - l.material.opacity) * Math.min(1, dt * 10);
+    l.scale.setScalar(1 + (u.pop / 0.6) * 0.5);
   }
 }
-export function encenderHoyo(g, i, color) {
+// on = true: hay canica del color dado; on = false: se fue
+export function encenderHoyo(g, i, color, on = true) {
   const l = g.userData.luces[i];
   if (!l) return;
-  l.material.color.set(color);
-  l.userData.t = 1.6;
+  if (color) l.material.color.set(color);
+  l.userData.on = on;
+  l.userData.pop = 0.6;
+}
+export function apagarHoyos(g) {
+  for (const l of g.userData.luces) { l.userData.on = false; l.userData.pop = 0; l.material.opacity = 0; }
 }

@@ -9,7 +9,7 @@ Juego 3D de lanzar figuritas de hielo, inspirado en los juegos de lanzar figurit
    - **Clásico**: lánzalo al aire. Si cae de cabeza vale 10, de pie 5, de lado 3, boca arriba 1.5 y boca abajo 0.
    - **Bombardero**: saca a los cubitos del círculo. Los que saques son tuyos.
    - **La línea**: gana el cubito que quede más cerca de la raya roja.
-   - **Canicas**: como en las ferias de pueblo de México. La canica rueda en línea recta, sube un tablero inclinado y cae en hoyos con números (del 1 al 20). Cada jugador tira 5 y la suma da un premio: chicle, paleta, peluche chico, peluche grande u oso gigante. Solo juegan las figuras redondas (Coco y Uva); si elegiste otra, juegas con una de ellas.
+   - **Canicas**: como en las ferias de pueblo de México. La canica rueda en línea recta, sube un tablero inclinado y cae en hoyos con números (del 1 al 20). **Las canicas se quedan en la mesa**: las que caen se quedan en su hoyo (que se ilumina con el color del dueño), un golpe fuerte de otra canica las saca, y las que fallan se quedan en el camino estorbando. Cada jugador tira 5; al final cada quien suma los hoyos donde tiene canica y gana un premio: chicle, paleta, peluche chico, peluche grande u oso gigante. Solo juegan las figuras redondas (Coco y Uva); si elegiste otra, juegas con una de ellas.
 3. Escoge un escenario. Todos tienen paredes donde rebotan los cubitos:
    - **Pista de hielo**: resbalosa, con paredes de vidrio.
    - **Mesa de madera**: agarre medio.

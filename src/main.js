@@ -8,7 +8,7 @@ import { PJS, crearCubito, BASE } from "./personajes.js";
 import { Anfitrion, Invitado, limpiarCodigo } from "./red.js";
 import { ESCENARIOS, texturaDe } from "./escenarios.js";
 import { t, tr, ponerIdioma, idioma, IDIOMAS, traducirPagina } from "./i18n.js";
-import { TAB, HOYOS, HOYO_R, SALIDA_Z, puntoTablero, enTablero, premioDe, apuntarHoyo, crearCuerpos, crearTablero, animarTablero, encenderHoyo, pintarLetrero } from "./canicas.js";
+import { TAB, HOYOS, SALIDA_Z, FRENO_PISO, enTablero, premioDe, apuntarHoyo, crearCuerpos, crearTablero, animarTablero, encenderHoyo, apagarHoyos, pintarLetrero, pasoCanicas, prepararCanica, nuevoTiroCanicas } from "./canicas.js";
 
 const $ = id => document.getElementById(id);
 const canvas = $("escena");
@@ -203,6 +203,14 @@ function crearPieza(id, pj, dueno, x, y, z) {
   if (autoridad()) world.addBody(body);
   envoltura.position.copy(body.position);
   const p = { id, pj, dueno, envoltura, body, he, radio: F.f === "bola" ? (alto / 2) * ESC : he.y, marcador: null, anillo: null, objetivo: null, hoyo: null };
+  if (S.modo === "canicas" && dueno >= 0) {
+    // en Canicas todas son redondas y parecidas: un puntito del color del dueño dice de quién es cada una
+    p.marca = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaPunto(), color: new THREE.Color(S.jugadores[dueno]?.color ?? "#ffffff"), depthTest: false }));
+    p.marca.scale.set(0.42, 0.42, 1);
+    p.marca.renderOrder = 5;
+    scene.add(p.marca);
+    if (autoridad()) prepararCanica(p);
+  }
   piezas.set(id, p);
   return p;
 }
@@ -213,7 +221,17 @@ function quitarPieza(id) {
   scene.remove(p.envoltura);
   if (p.marcador) scene.remove(p.marcador);
   if (p.anillo) scene.remove(p.anillo);
+  if (p.marca) scene.remove(p.marca);
   piezas.delete(id);
+}
+let _texPunto = null;
+function texturaPunto() {
+  if (_texPunto) return _texPunto;
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const x = c.getContext("2d");
+  x.fillStyle = "#fff"; x.beginPath(); x.arc(32, 32, 30, 0, Math.PI * 2); x.fill();
+  x.fillStyle = "#ffffff"; x.strokeStyle = "rgba(0,0,0,.35)"; x.lineWidth = 6; x.beginPath(); x.arc(32, 32, 24, 0, Math.PI * 2); x.stroke();
+  return (_texPunto = new THREE.CanvasTexture(c));
 }
 function limpiarPiezas() { for (const id of [...piezas.keys()]) quitarPieza(id); }
 
@@ -248,6 +266,8 @@ const S = {
   espera: [],         // los que entran con la partida empezada: miran y juegan la siguiente
   cuenta: null,       // cuenta regresiva de la sala cuando todos están listos
   espectador: false,
+  ocupados: [],       // Canicas: qué canica está en cada hoyo
+  sacadas: 0,         // Canicas: cuántas canicas sacó el tiro actual
   escenario: "hielo",
 };
 let red = null;
@@ -794,6 +814,7 @@ function aplicar(msg) {
       S.espectador = !!msg.espectador || !msg.jugadores.some(j => j.id === S.miId);
       if (msg.escenario) aplicarEscenario(msg.escenario);
       if (!autoridad()) limpiarPiezas();
+      apagarHoyos(tableroCanicas);
       if (S.modo === "canicas") {
         const yo = S.jugadores.findIndex(j => j.id === S.miId);
         if (yo >= 0 && !esRedondo(S.jugadores[yo].pj)) setTimeout(() => aviso(t("av.soloRedondas", { n: PJS[pjDeJuego(S.jugadores[yo], yo)].nombre })), 300);
@@ -815,7 +836,7 @@ function aplicar(msg) {
     case "cercano": marcarAnillo(msg.id); break;
     case "sacar": sacarPieza(msg.id, msg.hacia); break;
     case "fin": mostrarFin(msg); break;
-    case "hoyo": encenderHoyo(tableroCanicas, msg.i, msg.c); sonido("hoyo"); break;
+    case "hoyo": encenderHoyo(tableroCanicas, msg.i, msg.c, msg.on); sonido(msg.on ? "hoyo" : "tic"); break;
   }
 }
 
@@ -858,6 +879,7 @@ function iniciarPartida() {
   S.turno = 0;
   fisicaTablero(S.modo === "canicas");
   ponerSalida();
+  S.ocupados = HOYOS.map(() => null);
   emitir({ t: "inicio", modo: S.modo, jugadores: S.jugadores, escenario: S.escenario });
   if (S.modo === "bombardero") {
     const n = Math.min(16, 6 + 2 * S.jugadores.length);
@@ -893,7 +915,7 @@ const CFG = {
   clasico: { vmin: 8, vmax: 15.5, lat: 6 },
   bombardero: { vmin: 6, vmax: 20, lat: 12 },
   linea: { vmin: 4, vmax: 20.5, lat: 12 },
-  canicas: { vmin: 4, vmax: 12 },
+  canicas: { vmin: 4, vmax: 13 },
 };
 // velocidad inicial y efecto lateral de un tiro
 function calcTiro(t) {
@@ -930,6 +952,7 @@ function lanzar(tiro) {
     b.angularVelocity.set((Math.random() - 0.5) * giro * 2, -tiro.curva * 9 + (Math.random() - 0.5) * giro, (Math.random() - 0.5) * giro * 2);
   }
   p.aLat = aLat; p.tCurva = 0;
+  if (S.modo === "canicas") { nuevoTiroCanicas(canicasEnMesa()); S.sacadas = 0; }
   S.fase = "volando";
   S.tEspera = 0;
   S.apunta = null;
@@ -937,42 +960,25 @@ function lanzar(tiro) {
   emitir({ t: "son", q: "lanzar" });
 }
 
-// el borde del hoyo jala un poquito la canica hacia adentro
+// ---------- Canicas: las canicas se quedan en el tablero ----------
+// Cada paso: el piso frena lo que rueda, los hoyos atrapan a las lentas y sueltan a las que botan de un golpe.
+const canicasEnMesa = () => [...piezas.values()].filter(q => q.dueno >= 0 && q.body.type === CANNON.Body.DYNAMIC);
 world.addEventListener("preStep", () => {
-  if (S.modo !== "canicas") return;
-  const p = piezas.get(S.lanzadaId);
-  if (!p || p.hoyo != null || p.body.type !== CANNON.Body.DYNAMIC) return;
-  const b = p.body, e = enTablero(b.position);
-  if (e.u < 0 || e.u > TAB.L || e.h > p.radio + 0.25) return;
-  for (const h of HOYOS) {
-    const dx = h.x - e.x, du = h.u - e.u, d = Math.hypot(dx, du);
-    if (d < HOYO_R * 1.3 && d > 0.001 && b.velocity.length() < 3.5) {
-      const k = 8 * (1 - d / (HOYO_R * 1.3)) * b.mass / d;
-      b.applyForce(new CANNON.Vec3(dx * k, du * TAB.dir.y * k, du * TAB.dir.z * k), b.position);
+  if (S.modo !== "canicas" || !autoridad()) return;
+  const lista = canicasEnMesa();
+  for (const q of lista) {
+    const b = q.body;
+    if (enTablero(b.position).u < 0) {
+      const v = b.velocity, sp = Math.hypot(v.x, v.z);
+      if (sp > 0.05) b.applyForce(new CANNON.Vec3((-v.x / sp) * FRENO_PISO * b.mass, 0, (-v.z / sp) * FRENO_PISO * b.mass));
     }
   }
+  for (const ev of pasoCanicas(lista, S.ocupados)) {
+    const color = S.jugadores[ev.m.dueno]?.color ?? "#ffffff";
+    if (ev.tipo === "entra") emitir({ t: "hoyo", i: ev.i, c: color, on: true });
+    else { emitir({ t: "hoyo", i: ev.i, on: false }); if (ev.m.id !== S.lanzadaId) S.sacadas++; }
+  }
 });
-// si la canica pasa lenta sobre un hoyo, cae. Rodando cuesta arriba frena unos 3.3 m/s², así que
-// rumbo a la última fila todavía cruza la primera a ~4.6 m/s y no cae: solo cae cerca de donde se detiene
-// (o de regreso, si se pasó un poco)
-function revisarHoyos() {
-  const p = piezas.get(S.lanzadaId);
-  if (!p || p.hoyo != null || p.body.type !== CANNON.Body.DYNAMIC) return;
-  const b = p.body, e = enTablero(b.position);
-  if (e.u < 0 || e.u > TAB.L || e.h > p.radio + 0.25) return;
-  const vel = b.velocity.length();
-  HOYOS.forEach((h, i) => {
-    if (p.hoyo != null) return;
-    if (Math.hypot(h.x - e.x, h.u - e.u) < HOYO_R * 0.62 && vel < 2.2) {
-      p.hoyo = i;
-      b.velocity.setZero(); b.angularVelocity.setZero();
-      b.type = CANNON.Body.STATIC; b.mass = 0; b.updateMassProperties();
-      const c = puntoTablero(h.x, h.u, p.radio * 0.45);
-      b.position.set(c.x, c.y, c.z);
-      emitir({ t: "hoyo", i, c: jugadorTurno()?.color ?? "#ffffff" });
-    }
-  });
-}
 world.addEventListener("preStep", () => {
   const p = piezas.get(S.lanzadaId);
   if (!p || !p.aLat || p.body.type !== CANNON.Body.DYNAMIC) return;
@@ -980,7 +986,7 @@ world.addEventListener("preStep", () => {
   if (p.tCurva > CURVA_SEG) return;
   const v = p.body.velocity, sp = Math.hypot(v.x, v.z);
   if (sp < 0.8) return;
-  p.body.applyForce(new CANNON.Vec3((-v.z / sp) * p.aLat * p.body.mass, 0, (v.x / sp) * p.aLat * p.body.mass), p.body.position);
+  p.body.applyForce(new CANNON.Vec3((-v.z / sp) * p.aLat * p.body.mass, 0, (v.x / sp) * p.aLat * p.body.mass));
 });
 
 function todoQuieto() {
@@ -1002,11 +1008,13 @@ function evaluar() {
     emitir({ t: "aviso", a: [r.k], b: ["av.mas", { n: j.nombre, p: fmt(r.pts) }], s: r.pts >= 5 ? "bien" : r.pts > 0 ? "tic" : "mal" });
     emitir({ t: "etiqueta", id: p.id, texto: [r.k] });
   } else if (S.modo === "canicas") {
-    if (p.hoyo != null) {
-      const v = HOYOS[p.hoyo].valor;
-      j.pts += v;
-      emitir({ t: "aviso", a: ["av.hoyo", { n: v }], b: ["av.mas", { n: j.nombre, p: v }], s: v >= 8 ? "bien" : "tic" });
-    } else emitir({ t: "aviso", a: ["av.fuera"], b: j.nombre, s: "mal" });
+    // los puntos salen de cómo quedó el tablero: cada quien suma los hoyos donde tiene canica
+    for (const q of S.jugadores) q.pts = 0;
+    for (const q of piezas.values()) if (q.dueno >= 0 && q.hoyo != null) S.jugadores[q.dueno].pts += HOYOS[q.hoyo].valor;
+    const sub = S.sacadas ? ["av.saco", { n: S.sacadas }] : j.nombre;
+    if (p.hoyo != null) emitir({ t: "aviso", a: ["av.hoyo", { n: HOYOS[p.hoyo].valor }], b: S.sacadas ? sub : ["av.mas", { n: j.nombre, p: HOYOS[p.hoyo].valor }], s: "bien" });
+    else if (S.sacadas) emitir({ t: "aviso", a: ["av.saco", { n: S.sacadas }], b: j.nombre, s: "bien" });
+    else emitir({ t: "aviso", a: ["av.fuera"], b: j.nombre, s: "mal" });
   } else if (S.modo === "bombardero") {
     let sacados = 0;
     for (const q of [...piezas.values()]) {
@@ -1040,7 +1048,7 @@ function siguiente() {
   const j = jugadorTurno();
   j.tiros++;
   const id = S.lanzadaId;
-  if (S.modo !== "linea") setTimeout(() => quitarPieza(id), S.modo === "clasico" ? 1100 : S.modo === "canicas" ? 900 : 300);
+  if (S.modo !== "linea" && S.modo !== "canicas") setTimeout(() => quitarPieza(id), S.modo === "clasico" ? 1100 : 300);
   const total = MODOS[S.modo].tiros;
   const activos = S.jugadores.filter(q => !q.fuera);
   const quedanFichas = [...piezas.values()].some(q => q.dueno === -1);
@@ -1126,6 +1134,16 @@ function turnoCpu() {
     tiro.curva = (Math.random() - 0.5) * 1.2;
   } else if (S.modo === "canicas") {
     // escoge un hoyo (a veces se arriesga por los que valen más) y calcula la fuerza para llegar
+    // a veces intenta botar la canica de otro jugador: apunta a ese hoyo con más fuerza
+    const ajenos = [...piezas.values()].filter(q => q.dueno >= 0 && q.dueno !== S.turno && q.hoyo != null);
+    if (ajenos.length && Math.random() < 0.35) {
+      const obj = ajenos[Math.floor(Math.random() * ajenos.length)], a = apuntarHoyo(obj.hoyo, xs);
+      tiro.ang = a.ang + (Math.random() - 0.5) * 0.03;
+      tiro.f = THREE.MathUtils.clamp((a.v + 1.3 + Math.random() * 0.6 - CFG.canicas.vmin) / (CFG.canicas.vmax - CFG.canicas.vmin), 0.05, 1);
+      setTimeout(() => { if (S.fase === "cpuApunta") S.apunta = tiro; }, 350);
+      setTimeout(() => { if (S.fase === "cpuApunta") lanzar(tiro); }, 1150);
+      return;
+    }
     const orden = [...HOYOS.keys()].sort(() => Math.random() - 0.5);
     const h = HOYOS[Math.random() < 0.4 ? HOYOS.reduce((m, x, i) => (x.valor * (0.6 + Math.random()) > HOYOS[m].valor ? i : m), orden[0]) : orden[0]];
     const a = apuntarHoyo(HOYOS.indexOf(h), xs);
@@ -1455,7 +1473,6 @@ function bucle() {
   if (enJuego) {
     if (autoridad()) {
       world.step(1 / 60, dt, 4);
-      if (S.modo === "canicas" && S.fase === "volando") revisarHoyos();
       const p = piezas.get(S.lanzadaId);
       if (p && p.body.type === CANNON.Body.KINEMATIC) {
         const b = p.body;
@@ -1470,11 +1487,7 @@ function bucle() {
         if (S.fase === "cpu") { S.tEspera += dt; if (S.tEspera > 0.9) { S.fase = "cpuApunta"; turnoCpu(); } }
         if (S.fase === "volando") {
           S.tEspera += dt;
-          const lp0 = piezas.get(S.lanzadaId);
-          // en Canicas el tiro termina al caer en un hoyo o cuando la canica regresa por la rampa
-          const canicaLista = S.modo === "canicas" && lp0 && (lp0.hoyo != null ? S.tEspera > 0.8
-            : S.tEspera > 1 && lp0.body.position.z > TAB.z0 + 0.5 && lp0.body.velocity.z > 0.3);
-          if (canicaLista || (S.tEspera > 0.6 && todoQuieto()) || S.tEspera > 7) {
+          if ((S.tEspera > 0.6 && todoQuieto()) || S.tEspera > (S.modo === "canicas" ? 10 : 7)) {
             S.fase = "evaluando";
             const j = jugadorTurno(), lp = piezas.get(S.lanzadaId);
             if (S.modo === "linea" && j.cpu && lp) S.cpuAjuste[j.id] = (S.cpuAjuste[j.id] || 0) + (lp.body.position.z - LINEA_Z) * 0.7;
@@ -1490,6 +1503,7 @@ function bucle() {
     for (const q of piezas.values()) {
       if (q.marcador) q.marcador.position.set(q.envoltura.position.x, q.envoltura.position.y + 1.1, q.envoltura.position.z);
       if (q.anillo) q.anillo.position.set(q.envoltura.position.x, 0.02, q.envoltura.position.z);
+      if (q.marca) q.marca.position.set(q.envoltura.position.x, q.envoltura.position.y + q.radio + 0.32, q.envoltura.position.z);
     }
     // trayectoria de quien está apuntando (CPU o persona) para los que miran
     if (!arrastre) {
@@ -1575,6 +1589,8 @@ if (salaUrl.length === 5) {
 if (window.ICECRAZY_PEER) window.__ice = {
   S, red: () => red, dibujar: () => renderer.render(scene, camera),
   tirar: tiro => { if (esMiTurno()) { S.xSalida = tiro.xs ?? 0; lanzar({ curva: 0, elev: "medio", ...tiro }); } },
+  mesa: () => [...piezas.values()].map(q => ({ id: q.id, dueno: q.dueno, hoyo: q.hoyo, x: +q.body.position.x.toFixed(2), z: +q.body.position.z.toFixed(2) })),
+  luces: () => tableroCanicas.userData.luces.map(l => +l.material.opacity.toFixed(2)),
   pieza: () => { const p = piezas.get(S.lanzadaId); return p && { hoyo: p.hoyo, pj: p.pj, x: p.body.position.x, y: p.body.position.y, z: p.body.position.z }; },
   apuntaA: (i, xs = 0) => { const a = apuntarHoyo(i, xs); return { ang: a.ang, xs, f: (a.v - CFG.canicas.vmin) / (CFG.canicas.vmax - CFG.canicas.vmin), valor: a.valor }; },
   camara: (pos, mira) => { camera.position.set(...pos); camera.lookAt(...mira); },

@@ -4,7 +4,7 @@ export const IDIOMAS = { en: "EN", es: "ES", ja: "日本語" };
 const D = {
   en: {
     "modo.canicas": "Marbles",
-    "modo.canicas.desc": "Like the village-fair game: roll straight into the numbered holes. Add up points for a prize. Round figures only.",
+    "modo.canicas.desc": "Like the village-fair game: roll straight into the numbered holes. Marbles stay on the board: knock out other players' marbles, or let them get in the way. Round figures only.",
     "ayuda.canicas": "Drag up and release · the marble rolls in a straight line",
     "av.hoyo": "In the {n}!",
     "av.fuera": "Missed!",
@@ -160,7 +160,7 @@ const D = {
   },
   es: {
     "modo.canicas": "Canicas",
-    "modo.canicas.desc": "Como en la feria del pueblo: rueda en línea recta hacia los hoyos con números. Suma y gana un premio. Solo figuras redondas.",
+    "modo.canicas.desc": "Como en la feria del pueblo: rueda en línea recta hacia los hoyos con números. Las canicas se quedan en el tablero: saca las de los demás o esquívalas. Solo figuras redondas.",
     "ayuda.canicas": "Arrastra hacia arriba y suelta · la canica rueda en línea recta",
     "av.hoyo": "¡Al {n}!",
     "av.fuera": "¡Se salió!",
@@ -316,7 +316,7 @@ const D = {
   },
   ja: {
     "modo.canicas": "ビー玉",
-    "modo.canicas.desc": "メキシコのお祭りのゲーム。まっすぐ転がして数字の穴に入れよう。合計点で景品がもらえる。丸いキャラだけ参加できます。",
+    "modo.canicas.desc": "メキシコのお祭りのゲーム。まっすぐ転がして数字の穴に入れよう。ビー玉は残るので、ほかの人の玉をはじき出したり、よけたりしよう。丸いキャラだけ参加できます。",
     "ayuda.canicas": "上にドラッグして離す・ビー玉はまっすぐ転がります",
     "av.hoyo": "{n}に入った！",
     "av.fuera": "はずれ！",

@@ -72,7 +72,6 @@ Hecho por **Victor Manuel Franco** · [YouTube: Un dev Mexicano en Japón](https
 ### Mis otros productos
 
 - [Historias en japonés](https://historiasenjapones.com): aprende japonés leyendo cuentos
-- [Unihongo](https://unihongo.com): japonés con Mocchi, tu tutor de IA
 - [KanjiGuess](https://apps.apple.com/us/app/kanjiguess/id6811568689)
 - [The Hiraganas King](https://apps.apple.com/us/app/the-hiraganas-king/id1637657106)
 - [Tamagowoulda](https://apps.apple.com/us/app/tamagowoulda-%E8%8B%B1%E8%AA%9E%E3%83%9A%E3%83%83%E3%83%88/id6814585506)
